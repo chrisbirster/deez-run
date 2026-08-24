@@ -1,7 +1,8 @@
+import type { ParentProps } from "solid-js";
 import "./styles.css";
 import { Router } from "./router";
 
-function Layout(props: { children: unknown }) {
+function Layout(props: ParentProps) {
   return (
     <div class="site-shell">
       <header class="site-header">

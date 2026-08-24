@@ -1,19 +1,14 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "useDefineForClassFields": true,
+    "target": "ESNext",
     "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "allowImportingTsExtensions": false,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "noEmit": true,
+    "moduleResolution": "bundler",
     "jsx": "preserve",
-    "jsxImportSource": "solid-js",
-    "types": ["vite/client"]
+    "jsxImportSource": "@solidjs/web",
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": ["vite/client", "@solidjs/vite-plugin/boundary-modules"]
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src"]
 }
