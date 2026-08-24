@@ -1,7 +1,8 @@
-import { readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  buildSitemap,
   compareSemver,
   parseNut,
   rawGitHubUrl,
@@ -13,6 +14,8 @@ import {
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const registryDir = path.join(root, "registry", "nuts");
 const outputPath = path.join(root, "src", "generated", "catalog.json");
+const publicDir = path.join(root, "public");
+const sitemapPath = path.join(publicDir, "sitemap.xml");
 const checkOnly = process.argv.includes("--check");
 
 async function loadEntries() {
@@ -77,8 +80,14 @@ async function loadEntries() {
 try {
   const catalog = await loadEntries();
   const serialized = `${JSON.stringify(catalog, null, 2)}\n`;
-  if (!checkOnly) await writeFile(outputPath, serialized, "utf8");
-  console.log(`registry: validated ${catalog.entries.length} nut${catalog.entries.length === 1 ? "" : "s"}${checkOnly ? "" : " and generated catalog"}`);
+  if (!checkOnly) {
+    await mkdir(publicDir, { recursive: true });
+    await Promise.all([
+      writeFile(outputPath, serialized, "utf8"),
+      writeFile(sitemapPath, buildSitemap(catalog.entries), "utf8"),
+    ]);
+  }
+  console.log(`registry: validated ${catalog.entries.length} nut${catalog.entries.length === 1 ? "" : "s"}${checkOnly ? "" : " and generated catalog + sitemap"}`);
 } catch (error) {
   console.error(`registry: ${error instanceof Error ? error.message : String(error)}`);
   process.exitCode = 1;
