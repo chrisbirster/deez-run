@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deez.run/schema/nut-entry-v1.json",
+  "title": "deez.run public nut registry entry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "slug", "name", "description", "authors", "tags", "source", "versions"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 80 },
+    "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "description": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "authors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["github"],
+        "properties": {
+          "github": { "type": "string", "minLength": 1, "maxLength": 39 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 120 }
+        }
+      }
+    },
+    "tags": { "type": "array", "items": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" }, "uniqueItems": true, "maxItems": 20 },
+    "license": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "repository"],
+      "properties": {
+        "type": { "const": "github" },
+        "repository": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" }
+      }
+    },
+    "versions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["version", "commit", "path", "sha256"],
+        "properties": {
+          "version": { "type": "string" },
+          "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+          "path": { "type": "string", "minLength": 5 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    }
+  }
+}
