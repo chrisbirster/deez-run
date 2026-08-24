@@ -13,7 +13,8 @@
     "test": "node --test test/*.test.mjs",
     "typecheck": "tsc --noEmit",
     "build": "npm run registry:generate && vite build",
-    "verify": "npm run registry:check && npm test && npm run typecheck && npm run build"
+    "test:ssr": "node test/ssr-smoke.mjs",
+    "verify": "npm run registry:check && npm test && npm run typecheck && npm run build && npm run test:ssr"
   },
   "dependencies": {
     "@solidjs/router": "2.0.0-next.17",

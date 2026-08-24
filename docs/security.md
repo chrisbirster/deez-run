@@ -33,7 +33,22 @@ CI currently enforces:
 - image-occlusion media reference and mask validation
 - derived card counts for built-in note types
 
-The validator follows the live Deez core format closely, but Deez core remains authoritative. CI conformance fixtures should grow whenever the core adds a format feature.
+The conformance test suite includes every current built-in Deez note type and accepted alias. Deez core remains authoritative; the deez.run fixtures must be updated when the core format changes.
+
+## HTTP response hardening
+
+The Solid SSR middleware applies security headers before the response is returned:
+
+- `Content-Security-Policy`
+- `Cross-Origin-Opener-Policy: same-origin`
+- restrictive `Permissions-Policy`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+
+The initial CSP allows inline scripts/styles because Solid's current SSR/hydration output can require inline bootstrap content. It still denies arbitrary external scripts, connections, objects, framing, and non-self form targets. Tightening this with nonces/hashes can be evaluated once the deployment target is fixed.
+
+CI performs a post-build SSR smoke test against the generated production handler and verifies deep-link HTML, head metadata, and key security headers. This catches failures that a compile-only check would miss.
 
 ## Why checksum and commit pinning both matter
 
@@ -43,6 +58,6 @@ A commit SHA gives an immutable Git identity while the repository remains availa
 
 `.sack` deserves a separate threat model because it contains ZIP entries and binary media. Deez core already applies path, duplicate-entry, CRC, size, and SHA verification during import. deez.run should not begin hosting or previewing arbitrary `.sack` media until it has explicit limits and content-scanning/rendering policies.
 
-## Follow-up hardening
+## Deployment follow-up
 
-Before production launch, add deployment-level headers including a restrictive Content Security Policy, `X-Content-Type-Options: nosniff`, an appropriate referrer policy, and frame-ancestor protection. These belong to the deployment target because the exact CSP must account for the generated Solid assets and hosting environment.
+Transport-level settings such as HTTPS redirects and HSTS belong to the final hosting configuration. The application-level headers above remain host-independent and are tested before deployment.
