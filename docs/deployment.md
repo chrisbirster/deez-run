@@ -21,7 +21,7 @@ npm install
 npm run verify
 ```
 
-`npm run verify` now performs all of the following:
+`npm run verify` performs all of the following:
 
 1. registry validation
 2. unit/conformance tests
@@ -32,9 +32,30 @@ npm run verify
 
 The dry run proves Cloudflare can package the generated production artifact without requiring deployment credentials.
 
-## First deployment
+## Manual GitHub production deployment
 
-Authenticate Wrangler once:
+Production deployment is intentionally manual for the initial milestone. The repository includes `.github/workflows/deploy.yml`, exposed as the **deploy** workflow in GitHub Actions.
+
+Add these repository or `production` environment secrets before the first run:
+
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_API_TOKEN`
+
+The token should be scoped to the Cloudflare account that owns the Deez Worker and should have only the permissions required to deploy Workers.
+
+Then run the workflow from GitHub:
+
+1. Open **Actions**.
+2. Select **deploy**.
+3. Select **Run workflow** on `main`.
+
+This works from GitHub web and the GitHub mobile app. The workflow runs the full verification suite before invoking `wrangler deploy`, so an invalid registry or broken production build cannot be deployed by that workflow.
+
+The deploy is serialized with a `production` concurrency group so two production deployments cannot race each other.
+
+## First local deployment
+
+For a one-off local deployment instead of GitHub Actions, authenticate Wrangler once:
 
 ```bash
 npx wrangler login
@@ -52,15 +73,20 @@ The initial config keeps `workers_dev` enabled so the Worker can be verified on 
 
 Do not bake account-specific zone IDs or API tokens into this repository.
 
-After the Worker deployment is verified, add `deez.run` as a Cloudflare Worker custom domain in the Cloudflare account that owns the zone. Keep the custom-domain mutation separate from the app build so a clone/fork cannot accidentally claim or alter production DNS.
+After the Worker deployment is verified, add `deez.run` as a Cloudflare Worker **Custom Domain** in the Cloudflare account that owns the zone. The Worker is the origin for deez.run, so a Custom Domain is preferable to a Worker Route in front of a separate origin.
+
+Keep the custom-domain mutation separate from the app build so a clone/fork cannot accidentally claim or alter production DNS.
+
+For the initial launch, use the apex `deez.run` hostname as canonical. If `www.deez.run` is enabled later, redirect it to the apex rather than serving two canonical hosts.
 
 Once the domain is serving correctly:
 
 - redirect HTTP to HTTPS at Cloudflare
 - enable HSTS only after HTTPS behavior is verified
 - verify `/`, `/nuts`, `/docs`, `/publish`, `/sitemap.xml`, and `/robots.txt`
-- publish and verify the first real `/nuts/:slug` page
+- verify `/nuts/zig-basics`
+- verify the pinned source/download link and displayed checksum
 
-## CI deployment later
+## Automatic deployment later
 
-A GitHub Actions deployment workflow can be added after the Cloudflare account/token model is chosen. It should use repository/environment secrets rather than committing credentials and should preserve the existing PR verification gate.
+Do not enable deploy-on-push until the manual production workflow has been exercised successfully and branch protection is established. At that point the same workflow can safely evolve to deploy merged `main` commits automatically while keeping pull requests verification-only.
