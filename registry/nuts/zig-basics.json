@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "slug": "zig-basics",
+  "name": "Zig Basics",
+  "description": "An introductory Deez nut covering core Zig language concepts such as comptime, optionals, error unions, defer, pointers, slices, and explicit allocators.",
+  "authors": [
+    {
+      "github": "chrisbirster",
+      "name": "Chris Birster"
+    }
+  ],
+  "tags": [
+    "zig",
+    "programming",
+    "systems-programming",
+    "basics"
+  ],
+  "source": {
+    "type": "github",
+    "repository": "chrisbirster/deez-nuts"
+  },
+  "versions": [
+    {
+      "version": "1.0.0",
+      "commit": "84a2e18d513688c7d07829a7c56081fdeff4b62c",
+      "path": "nuts/zig-basics/zig-basics.nut",
+      "sha256": "4cb0f4210011a5fa62e1b8e8ebcfaf66814b058403bf7bfe9dc122d9c9972bda"
+    }
+  ]
+}
