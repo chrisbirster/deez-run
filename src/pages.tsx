@@ -8,6 +8,7 @@ import {
   searchNuts,
   type CatalogEntry,
 } from "./lib/catalog";
+import { Seo } from "./seo";
 
 function NutCard(props: { nut: CatalogEntry }) {
   return (
@@ -53,6 +54,11 @@ function EmptyCatalog() {
 export function HomePage() {
   return (
     <>
+      <Seo
+        title="deez.run"
+        description="Discover, inspect, and download public Deez .nut flashcard decks while keeping your study database local."
+        path="/"
+      />
       <section class="hero">
         <div>
           <p class="eyebrow">Public Deez catalog</p>
@@ -97,6 +103,11 @@ export function HomePage() {
 export function NutsPage() {
   return (
     <section class="section narrow-top">
+      <Seo
+        title="Public nuts"
+        description="Browse validated public Deez .nut decks with immutable GitHub source pins and SHA-256 checksums."
+        path="/nuts"
+      />
       <p class="eyebrow">Browse</p>
       <h1>Public nuts</h1>
       <p class="lede">Validated metadata and immutable GitHub source pins. No account required.</p>
@@ -116,6 +127,12 @@ export function SearchPage() {
 
   return (
     <section class="section narrow-top">
+      <Seo
+        title={query() ? `Search: ${query()}` : "Search"}
+        description="Search public Deez nuts by name, description, tag, author, or note type."
+        path={query() ? `/search?q=${encodeURIComponent(query())}` : "/search"}
+        noindex
+      />
       <p class="eyebrow">Search</p>
       <h1>Search the registry</h1>
       <form class="search-box search-page" action="/search" method="get">
@@ -146,6 +163,7 @@ export function NutPage() {
         const install = `curl -L '${latest.raw_url}' -o '${fileName}'\necho '${latest.sha256}  ${fileName}' | shasum -a 256 -c -\ndeez nut import '${fileName}'`;
         return (
           <article class="section nut-detail narrow-top">
+            <Seo title={item.name} description={item.description} path={`/nuts/${item.slug}`} />
             <p class="eyebrow">Nut · v{latest.version}</p>
             <h1>{item.name}</h1>
             <p class="lede">{item.description}</p>
@@ -219,6 +237,11 @@ export function AuthorPage() {
   const entries = () => nutsByAuthor(author());
   return (
     <section class="section narrow-top">
+      <Seo
+        title={`@${author()}`}
+        description={`Public Deez nuts published by GitHub author @${author()}.`}
+        path={`/authors/${author()}`}
+      />
       <p class="eyebrow">Author</p>
       <h1>@{author()}</h1>
       <p><a href={`https://github.com/${author()}`}>View GitHub profile</a></p>
@@ -232,6 +255,11 @@ export function AuthorPage() {
 export function DocsPage() {
   return (
     <section class="section prose narrow-top">
+      <Seo
+        title="Docs"
+        description="Learn how the deez.run public registry, .nut decks, .sack packages, checksums, and local Deez imports fit together."
+        path="/docs"
+      />
       <p class="eyebrow">Docs</p>
       <h1>How deez.run fits Deez</h1>
       <p>deez.run is a public discovery layer, not the authoritative study database. Deez remains local-first and usable without an account.</p>
@@ -251,6 +279,11 @@ export function DocsPage() {
 export function PublishPage() {
   return (
     <section class="section prose narrow-top">
+      <Seo
+        title="Publish"
+        description="Publish a public Deez .nut through the GitHub-backed deez.run registry using immutable commit pins and SHA-256 verification."
+        path="/publish"
+      />
       <p class="eyebrow">Publish</p>
       <h1>Publish a public nut</h1>
       <p>The initial workflow is intentionally GitHub- and PR-based. deez.run does not mutate your GitHub account.</p>
@@ -271,6 +304,12 @@ export function PublishPage() {
 export function NotFoundPage() {
   return (
     <section class="section narrow-top">
+      <Seo
+        title="Not found"
+        description="This deez.run page was not found."
+        path="/404"
+        noindex
+      />
       <p class="eyebrow">404</p>
       <h1>That nut is not in the sack.</h1>
       <p><a href="/nuts">Browse public nuts</a> or <a href="/search">search the registry</a>.</p>

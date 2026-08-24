@@ -33,13 +33,15 @@ No database is required for the first milestone. The public site does not read a
 
 The site uses SolidJS 2, Solid Router's Solid 2 line, Vite, TypeScript, and npm.
 
-We are **not** using SolidStart v2. At this point in the Solid ecosystem, stable SolidStart v2 targets Solid 1.x. The Solid 2 `@solidjs/vite-plugin` now has a `start` mode that provides the serving layer directly, including streaming SSR. That gives public catalog pages server-rendered HTML without adopting a framework line that does not yet target Solid 2.
+We are **not** using SolidStart v2 for this milestone. The Solid 2 `@solidjs/vite-plugin` has a `start` mode that provides the serving layer directly, including streaming SSR, and keeps this catalog smaller than adopting a broader full-stack framework before it needs one.
 
-Initial Vite configuration uses `start: true` plus `ssr: true`. If the catalog later proves completely static, the same plugin can move toward prerendered/static delivery without changing the registry model.
+Initial Vite configuration uses `start: true` plus `ssr: true`. If the catalog later proves completely static, the same registry model can feed prerendered/static delivery instead.
 
 ## Why SSR now
 
 Public nut and author pages are canonical, shareable URLs. Rendering meaningful HTML on the first response helps crawlers, link previews, accessibility, and users with slow JavaScript. The content itself is build-generated, so SSR does **not** imply a database or a large backend.
+
+Solid 2's head handling is used for route-specific titles, descriptions, canonical links, and basic Open Graph/Twitter metadata. Search result pages are `noindex`; stable catalog, nut, author, docs, and publish pages are crawlable. The registry build also emits `public/sitemap.xml` and `public/robots.txt` points crawlers at it.
 
 ## Registry ownership vs content ownership
 
@@ -74,6 +76,7 @@ Public nut and author pages are canonical, shareable URLs. Rendering meaningful 
 - safe preview records
 - immutable raw/source URLs
 - the generated searchable catalog
+- the public sitemap
 
 Derived data is intentionally not contributor-authored. This prevents stale counts and previews from becoming another source of truth.
 
@@ -100,7 +103,7 @@ The first index is generated JSON imported by the public frontend. Search normal
 - author names/GitHub logins
 - derived note types
 
-This is enough for an early catalog and avoids a database, hosted search service, or runtime GitHub API dependency. If scale demands it later, the build can emit an inverted index without changing contributor metadata.
+This is enough for an early catalog and avoids a database, hosted search service, or runtime GitHub API dependency. Search result URLs are not canonical content pages and are marked `noindex`.
 
 ## Public URLs
 
