@@ -1,0 +1,13 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "deez-run",
+  "main": "./dist/server/server.js",
+  "compatibility_date": "2026-08-23",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./dist/client"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

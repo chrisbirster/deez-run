@@ -14,7 +14,9 @@
     "typecheck": "tsc --noEmit",
     "build": "npm run registry:generate && vite build",
     "test:ssr": "node test/ssr-smoke.mjs",
-    "verify": "npm run registry:check && npm test && npm run typecheck && npm run build && npm run test:ssr"
+    "deploy:check": "wrangler deploy --dry-run --outdir .wrangler/deploy-check",
+    "deploy": "npm run build && wrangler deploy",
+    "verify": "npm run registry:check && npm test && npm run typecheck && npm run build && npm run test:ssr && npm run deploy:check"
   },
   "dependencies": {
     "@solidjs/router": "2.0.0-next.17",
@@ -24,6 +26,7 @@
   "devDependencies": {
     "@solidjs/vite-plugin": "3.0.0-next.29",
     "typescript": "5.9.2",
-    "vite": "8.2.1"
+    "vite": "8.2.1",
+    "wrangler": "4.125.0"
   }
 }
