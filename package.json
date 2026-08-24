@@ -1,0 +1,28 @@
+{
+  "name": "deez-run",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "npm run registry:generate && vite",
+    "registry:generate": "node scripts/build-registry.mjs",
+    "registry:check": "node scripts/build-registry.mjs --check",
+    "test": "node --test test/*.test.mjs",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run registry:generate && vite build",
+    "verify": "npm run registry:check && npm test && npm run typecheck && npm run build"
+  },
+  "dependencies": {
+    "@solidjs/router": "2.0.0-next.17",
+    "@solidjs/web": "2.0.0-rc.1",
+    "solid-js": "2.0.0-rc.1"
+  },
+  "devDependencies": {
+    "@solidjs/vite-plugin": "3.0.0-next.29",
+    "typescript": "5.9.2",
+    "vite": "8.2.1"
+  }
+}
