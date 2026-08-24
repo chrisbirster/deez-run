@@ -26,8 +26,9 @@ The registry stores metadata, not everybody's deck content. Public `.nut` files 
 - TypeScript
 - npm
 - generated registry/search data; no application database
+- Cloudflare Workers + Static Assets as the initial deployment target
 
-SolidStart is intentionally not used because its current stable v2 line targets Solid 1.x. The Solid 2 Vite plugin now provides the serving/SSR layer directly.
+SolidStart is intentionally not required for this milestone; the Solid 2 Vite plugin provides the serving/SSR layer directly.
 
 ## Development
 
@@ -36,10 +37,16 @@ npm install
 npm run dev
 ```
 
-Validate the registry and production build:
+Validate the registry, tests, production SSR handler, and Cloudflare packaging:
 
 ```bash
 npm run verify
+```
+
+Build and deploy after authenticating Wrangler:
+
+```bash
+npm run deploy
 ```
 
 ## Documentation
@@ -48,3 +55,4 @@ npm run verify
 - [`docs/registry.md`](docs/registry.md)
 - [`docs/publishing.md`](docs/publishing.md)
 - [`docs/security.md`](docs/security.md)
+- [`docs/deployment.md`](docs/deployment.md)
