@@ -4,7 +4,9 @@ import solid from "@solidjs/vite-plugin";
 export default defineConfig({
   plugins: [
     solid({
-      start: true,
+      start: {
+        middleware: "./src/middleware.ts",
+      },
       ssr: true,
     }),
   ],
