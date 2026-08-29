@@ -4,6 +4,12 @@
   "main": "./dist/server/server.js",
   "compatibility_date": "2026-08-23",
   "workers_dev": true,
+  "routes": [
+    {
+      "pattern": "deez.run",
+      "custom_domain": true
+    }
+  ],
   "assets": {
     "directory": "./dist/client"
   },
