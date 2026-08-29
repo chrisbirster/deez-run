@@ -11,7 +11,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -19,3 +19,8 @@ jobs:
           node-version: 24
       - run: npm install
       - run: npm run verify
+      - name: Build production image
+        run: docker build --build-arg TARGETARCH=amd64 -t deez-run:ci .
+      - name: Verify production runtime contains only Deez server requirements
+        run: |
+          docker run --rm --entrypoint /bin/sh deez-run:ci -c 'test -x /app/deez && test -f /app/web/index.html && ! command -v node && ! command -v npm && ! command -v zig'
