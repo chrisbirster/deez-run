@@ -20,6 +20,7 @@ RUN apt-get update \
       curl \
       git \
       libsqlite3-dev \
+      python3 \
       xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
