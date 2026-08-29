@@ -23,4 +23,27 @@ jobs:
         run: docker build --build-arg TARGETARCH=amd64 -t deez-run:ci .
       - name: Verify production runtime contains only Deez server requirements
         run: |
-          docker run --rm --entrypoint /bin/sh deez-run:ci -c 'test -x /app/deez && test -f /app/web/index.html && ! command -v node && ! command -v npm && ! command -v zig'
+          docker run --rm --entrypoint /bin/sh deez-run:ci -c 'test -x /app/deez && test -f /app/web/index.html && ! command -v node && ! command -v npm && ! command -v zig && ! command -v python3'
+      - name: Smoke-test Zig API and SPA serving
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name deez-run-smoke \
+            -e DEEZ_STORAGE=sqlite \
+            -e DEEZ_DB=/tmp/deez.db \
+            -p 18080:8080 \
+            deez-run:ci
+          trap 'docker logs deez-run-smoke || true; docker rm -f deez-run-smoke >/dev/null 2>&1 || true' EXIT
+
+          for _ in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:18080/api/v1/health > /tmp/health.json; then
+              break
+            fi
+            sleep 1
+          done
+
+          grep -q '"status":"ok"' /tmp/health.json
+          curl --fail --silent http://127.0.0.1:18080/ > /tmp/index.html
+          grep -q 'id="root"' /tmp/index.html
+          curl --fail --silent http://127.0.0.1:18080/nuts > /tmp/spa-fallback.html
+          grep -q 'id="root"' /tmp/spa-fallback.html
