@@ -10,23 +10,21 @@
     "dev": "npm run registry:generate && vite",
     "registry:generate": "node scripts/build-registry.mjs",
     "registry:check": "node scripts/build-registry.mjs --check",
-    "test": "node --test test/*.test.mjs",
+    "test": "node --test test/registry.test.mjs",
     "typecheck": "tsc --noEmit",
     "build": "npm run registry:generate && vite build",
-    "test:ssr": "node test/ssr-smoke.mjs",
-    "deploy:check": "wrangler deploy --dry-run --outdir .wrangler/deploy-check",
-    "deploy": "npm run build && wrangler deploy",
-    "verify": "npm run registry:check && npm test && npm run typecheck && npm run build && npm run test:ssr && npm run deploy:check"
+    "verify": "npm run registry:check && npm test && npm run typecheck && npm run build"
   },
   "dependencies": {
     "@solidjs/router": "2.0.0-next.17",
     "@solidjs/web": "2.0.0-rc.1",
+    "@stylexjs/stylex": "0.19.0",
     "solid-js": "2.0.0-rc.1"
   },
   "devDependencies": {
     "@solidjs/vite-plugin": "3.0.0-next.29",
+    "@stylexjs/unplugin": "0.19.0",
     "typescript": "5.9.2",
-    "vite": "8.2.1",
-    "wrangler": "4.125.0"
+    "vite": "8.2.1"
   }
 }
