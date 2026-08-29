@@ -3,7 +3,15 @@ import solid from "@solidjs/vite-plugin";
 import stylex from "@stylexjs/unplugin/vite";
 
 export default defineConfig({
-  plugins: [stylex(), solid()],
+  plugins: [
+    stylex({
+      unstable_moduleResolution: {
+        type: "commonJS",
+        rootDir: process.cwd(),
+      },
+    }),
+    solid(),
+  ],
   server: {
     port: 5173,
     strictPort: true,
