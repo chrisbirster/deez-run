@@ -1,53 +1,66 @@
 # deez.run
 
-Public discovery and distribution catalog for shareable Deez `.nut` decks.
+Public Deez web app and `.nut` discovery catalog.
 
-This repository is intentionally separate from the Deez Zig core, the local `deez-web` application UI, and the desktop shell.
+This repository owns the browser application and deployment packaging. The Deez Zig core remains authoritative for storage, study, review, scheduling, and the HTTP API.
 
-## First milestone
+## Runtime architecture
 
-The first useful release is a GitHub-backed public catalog where a visitor can:
+```text
+SolidJS 2 + StyleX SPA
+        │
+        │ built once by Vite
+        ▼
+static files in /app/web
+        │
+        ▼
+Deez Zig server
+  ├── serves SPA + deep-link fallback
+  └── serves /api/v1/*
+        │
+        ▼
+MongoDB in production
+```
 
-- search registered nuts
-- open a stable `/nuts/:slug` page
-- inspect metadata and a safe text preview
-- see the exact source repository and pinned commit
-- download the exact `.nut` bytes
-- verify SHA-256 before importing locally
+Node, npm, Vite, StyleX tooling, Python, and the Zig compiler are build-time dependencies only. The Fly runtime contains the compiled `deez` executable, static web assets, CA certificates, and the SQLite runtime library used for local/smoke configurations.
 
-The registry stores metadata, not everybody's deck content. Public `.nut` files remain in their authors' GitHub repositories.
+The production image pins Deez to an immutable commit so a deployment cannot silently pick up a different core revision.
 
-## Stack
+## Frontend
 
 - SolidJS 2 RC
-- Solid Router 2 next line
+- Solid Router 2
+- StyleX
 - Vite 8
-- `@solidjs/vite-plugin` start mode with SSR
 - TypeScript
-- npm
-- generated registry/search data; no application database
-- Cloudflare Workers + Static Assets as the initial deployment target
+- generated registry/search data for public `.nut` discovery
 
-SolidStart is intentionally not required for this milestone; the Solid 2 Vite plugin provides the serving/SSR layer directly.
+Application styling lives in StyleX. The small static build is served directly by Deez; there is no Node or SSR server in production.
 
 ## Development
+
+Install and run the frontend dev server:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Validate the registry, tests, production SSR handler, and Cloudflare packaging:
+Vite proxies `/api` to a local Deez server on `127.0.0.1:5882`.
+
+Run the frontend verification suite:
 
 ```bash
 npm run verify
 ```
 
-Build and deploy after authenticating Wrangler:
+CI additionally builds the complete production Docker image and smoke-tests the real Zig server for both `/api/v1/health` and SPA deep-link fallback.
 
-```bash
-npm run deploy
-```
+## Deployment
+
+Production targets Fly.io. Deployment is manual through the repository's `deploy` GitHub Actions workflow until the production path has been exercised and branch protection is finalized.
+
+See [`docs/deployment.md`](docs/deployment.md) for setup.
 
 ## Documentation
 
