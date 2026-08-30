@@ -4,6 +4,7 @@ primary_region = "iad"
 [env]
   DEEZ_STORAGE = "mongodb"
   DEEZ_WEB_ROOT = "/app/web"
+  DEEZ_AUTH_BASE_URL = "https://deez.run"
 
 [http_service]
   internal_port = 8080
