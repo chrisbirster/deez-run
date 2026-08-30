@@ -8,5 +8,5 @@
     "types": ["node", "aws-lambda"],
     "skipLibCheck": true
   },
-  "include": ["sst.config.ts", "functions/**/*.ts"]
+  "include": ["sst-env.d.ts", "sst.config.ts", "functions/**/*.ts"]
 }
