@@ -61,7 +61,7 @@ There is no Resend dependency or Resend account requirement.
 - The relay treats all non-2xx SES/API outcomes as delivery failure.
 - Magic-link request responses remain generic and do not reveal whether an email already has an account.
 - Deez keeps per-email request throttling; API Gateway adds a second coarse throttle in front of the relay.
-- The relay uses a linked SES resource, so its Lambda receives only the email-sending permissions required by the stack.
+- The Lambda has only `ses:SendEmail`, scoped to the `auth.deez.run` SES identity ARN. It is not granted raw-email or templated-email actions.
 
 ## Public vs personal data
 
