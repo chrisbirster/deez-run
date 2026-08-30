@@ -2,46 +2,58 @@
 
 ## Decision summary
 
-deez.run begins as a public registry and catalog, not a cloud study backend.
-
-The first architecture is:
+deez.run uses one production server: the real Deez Zig executable.
 
 ```text
 AUTHOR-OWNED GITHUB REPOSITORY
         │
-        │ immutable commit + path
+        │ immutable commit + path + SHA-256
         ▼
     deck.nut bytes
         │
-        │ SHA-256 verified by CI
         ▼
-DEEZ.RUN REGISTRY METADATA
-        │
-        │ validate + derive
-        ▼
- GENERATED CATALOG / SEARCH DATA
+ GENERATED REGISTRY / SEARCH DATA
         │
         ▼
- SOLID 2 SSR PUBLIC WEBSITE
+ SOLIDJS 2 + STYLEX SPA
         │
-        └── download points back to immutable GitHub source
+        │ static Vite build
+        ▼
+      DEEZ ZIG
+   ├── static SPA serving
+   ├── SPA deep-link fallback
+   └── /api/v1/*
+        │
+        ▼
+      MONGODB
 ```
 
-No database is required for the first milestone. The public site does not read a user's local SQLite or MongoDB data and is not required for local Deez operation.
+The public registry still keeps deck bytes in author-owned repositories and generates catalog/search data at build time. The hosted Deez process provides the same native application API surface used for decks, notes, cards, study, review, media, and stats rather than introducing a second backend implementation.
 
-## Frontend choice
+## Frontend boundary
 
-The site uses SolidJS 2, Solid Router's Solid 2 line, Vite, TypeScript, and npm.
+The browser app uses SolidJS 2, Solid Router 2, StyleX, Vite, and TypeScript.
 
-We are **not** using SolidStart v2 for this milestone. The Solid 2 `@solidjs/vite-plugin` has a `start` mode that provides the serving layer directly, including streaming SSR, and keeps this catalog smaller than adopting a broader full-stack framework before it needs one.
+Vite and Node are build tools only. Production receives static `dist` output. Deez serves those files itself and falls back to `index.html` for non-API browser routes so `/nuts`, `/docs`, and other client-side routes work on a direct request.
 
-Initial Vite configuration uses `start: true` plus `ssr: true`. If the catalog later proves completely static, the same registry model can feed prerendered/static delivery instead.
+StyleX is the application styling layer. The frontend does not own scheduling or storage semantics.
 
-## Why SSR now
+## Backend boundary
 
-Public nut and author pages are canonical, shareable URLs. Rendering meaningful HTML on the first response helps crawlers, link previews, accessibility, and users with slow JavaScript. The content itself is build-generated, so SSR does **not** imply a database or a large backend.
+Deez Zig owns:
 
-Solid 2's head handling is used for route-specific titles, descriptions, canonical links, and basic Open Graph/Twitter metadata. Search result pages are `noindex`; stable catalog, nut, author, docs, and publish pages are crawlable. The registry build also emits `public/sitemap.xml` and `public/robots.txt` points crawlers at it.
+- HTTP API routing
+- decks, notes, cards, and media
+- study queue selection
+- review writes
+- FSRS scheduling
+- stats
+- storage abstraction
+- SPA/static-file serving
+
+Production sets `DEEZ_STORAGE=mongodb`; local development and CI smoke tests may use SQLite.
+
+The immutable review log remains authoritative while scheduler state is derived/rebuildable, following the Deez core model.
 
 ## Registry ownership vs content ownership
 
@@ -65,7 +77,7 @@ Solid 2's head handling is used for route-specific titles, descriptions, canonic
 - licensing files
 - release process inside their repository
 
-### CI derives
+### Build tooling derives
 
 - deck name from the `.nut` header
 - Deez `.nut` format/version
@@ -75,39 +87,26 @@ Solid 2's head handling is used for route-specific titles, descriptions, canonic
 - note types used
 - safe preview records
 - immutable raw/source URLs
-- the generated searchable catalog
-- the public sitemap
+- searchable catalog data
+- sitemap
 
-Derived data is intentionally not contributor-authored. This prevents stale counts and previews from becoming another source of truth.
+Derived data is intentionally not contributor-authored.
 
 ## Source identity
 
-A registry version must use all three of these:
+A registry version uses all three of:
 
 1. full 40-character Git commit SHA
 2. repository-relative `.nut` path
 3. SHA-256 of the exact file bytes
 
-A branch or tag alone is not a release identity because Git refs can move. GitHub's own blob identity is not a substitute for SHA-256 because the local Deez CLI can verify SHA-256 independently of GitHub.
-
 Download links use the pinned commit. The registry never silently follows `main`.
 
 ## Search
 
-The first index is generated JSON imported by the public frontend. Search normalizes and matches tokens across:
+The first catalog index is generated JSON imported by the frontend. Search normalizes and matches tokens across slug, name, description, tags, author identity, and derived note types. Normal catalog browsing does not depend on the GitHub REST API at runtime.
 
-- slug
-- name
-- description
-- tags
-- author names/GitHub logins
-- derived note types
-
-This is enough for an early catalog and avoids a database, hosted search service, or runtime GitHub API dependency. Search result URLs are not canonical content pages and are marked `noindex`.
-
-## Public URLs
-
-Stable routes in milestone zero:
+## Public routes
 
 - `/`
 - `/nuts`
@@ -117,20 +116,8 @@ Stable routes in milestone zero:
 - `/docs`
 - `/publish`
 
-The slug is the public identity. Version-specific canonical URLs can be introduced later without changing the initial slug page.
+API routes live under `/api/v1/*` and are never handled by SPA fallback.
 
-## GitHub API boundary
+## Deployment boundary
 
-Browser requests should not call GitHub's REST API for normal catalog rendering. Doing so would couple page availability to API rate limits and make anonymous traffic expensive.
-
-Registry CI fetches immutable raw source bytes during validation/build. The resulting catalog is what the site reads at runtime. A future periodic health job can re-check deleted or inaccessible sources separately.
-
-## `.sack` boundary
-
-`.sack` is deliberately separate from the first registry transport. It is a ZIP-compatible rich-media bundle containing `deck.nut` plus content-addressed media. Large binary artifacts have different storage, bandwidth, moderation, and malware-scanning concerns.
-
-Future source strategies can include GitHub Releases, external artifact URLs, or deez.run-managed object storage. None is required for the textual `.nut` catalog.
-
-## Business-model boundary
-
-The free public catalog does not require an account. The architecture leaves room for future managed private decks, `.sack` hosting, backups, sync, teams, and private media, but those are separate products and threat models rather than prerequisites for public discovery.
+A multi-stage Docker build compiles the SPA and a pinned Deez commit. The final image contains neither Node nor the Zig compiler. Fly.io runs `/app/deez` as the application process on port 8080.

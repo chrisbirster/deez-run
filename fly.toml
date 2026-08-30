@@ -1,0 +1,25 @@
+app = "deez-run"
+primary_region = "iad"
+
+[env]
+  DEEZ_STORAGE = "mongodb"
+  DEEZ_WEB_ROOT = "/app/web"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "15s"
+    interval = "15s"
+    method = "GET"
+    path = "/api/v1/health"
+    timeout = "5s"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "512mb"

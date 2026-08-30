@@ -1,5 +1,6 @@
 import { For, Show } from "solid-js";
 import { useParams, useSearchParams } from "@solidjs/router";
+import * as stylex from "@stylexjs/stylex";
 import {
   catalog,
   findNut,
@@ -9,21 +10,22 @@ import {
   type CatalogEntry,
 } from "./lib/catalog";
 import { Seo } from "./seo";
+import { styles } from "./siteStyles";
 
 function NutCard(props: { nut: CatalogEntry }) {
   return (
-    <article class="nut-card">
-      <div class="eyebrow">
+    <article {...stylex.props(styles.surface, styles.card)}>
+      <div {...stylex.props(styles.eyebrow)}>
         {props.nut.latest.note_count} notes · {props.nut.latest.card_count} cards
       </div>
-      <h2>
+      <h2 {...stylex.props(styles.heading2, styles.cardTitle)}>
         <a href={`/nuts/${props.nut.slug}`}>{props.nut.name}</a>
       </h2>
-      <p>{props.nut.description}</p>
-      <div class="tag-row">
-        <For each={props.nut.tags}>{(tag) => <span class="tag">{tag}</span>}</For>
+      <p {...stylex.props(styles.bodyCopy)}>{props.nut.description}</p>
+      <div {...stylex.props(styles.tagRow)}>
+        <For each={props.nut.tags}>{(tag) => <span {...stylex.props(styles.tag)}>{tag}</span>}</For>
       </div>
-      <p class="muted">
+      <p {...stylex.props(styles.muted)}>
         by{" "}
         <For each={props.nut.authors} fallback={<span>unknown</span>}>
           {(author, index) => (
@@ -40,13 +42,13 @@ function NutCard(props: { nut: CatalogEntry }) {
 
 function EmptyCatalog() {
   return (
-    <div class="empty-state">
-      <h2>The registry is ready for its first nut.</h2>
-      <p>
+    <div {...stylex.props(styles.surface, styles.empty)}>
+      <h2 {...stylex.props(styles.heading2)}>The registry is ready for its first nut.</h2>
+      <p {...stylex.props(styles.bodyCopy)}>
         Deck content stays in the author's GitHub repository. deez.run only indexes
         validated, checksum-pinned metadata.
       </p>
-      <a class="button" href="/publish">Read the publishing workflow</a>
+      <a {...stylex.props(styles.button)} href="/publish">Read the publishing workflow</a>
     </div>
   );
 }
@@ -59,39 +61,39 @@ export function HomePage() {
         description="Discover, inspect, and download public Deez .nut flashcard decks while keeping your study database local."
         path="/"
       />
-      <section class="hero">
+      <section {...stylex.props(styles.hero)}>
         <div>
-          <p class="eyebrow">Public Deez catalog</p>
-          <h1>Find a nut. Learn it locally.</h1>
-          <p class="lede">
-            deez.run discovers public `.nut` decks without becoming your flashcard
-            database. Browse here, download from the author, study in local Deez.
+          <p {...stylex.props(styles.eyebrow)}>Public Deez catalog</p>
+          <h1 {...stylex.props(styles.heading1)}>Find a nut. Learn it with Deez.</h1>
+          <p {...stylex.props(styles.lede)}>
+            deez.run is the user-facing Deez app and public deck catalog. The hosted app
+            talks to the same Zig core that powers the CLI.
           </p>
-          <form class="search-box" action="/search" method="get">
-            <label class="sr-only" for="home-search">Search public nuts</label>
-            <input id="home-search" name="q" type="search" placeholder="Search data structures, Zig, MongoDB…" />
-            <button type="submit">Search</button>
+          <form {...stylex.props(styles.searchBox)} action="/search" method="get">
+            <label {...stylex.props(styles.srOnly)} for="home-search">Search public nuts</label>
+            <input {...stylex.props(styles.searchInput)} id="home-search" name="q" type="search" placeholder="Search data structures, Zig, MongoDB…" />
+            <button {...stylex.props(styles.button)} type="submit">Search</button>
           </form>
         </div>
-        <aside class="flow-card" aria-label="How deez.run works">
-          <code>deez.run</code>
-          <span>↓ registry metadata</span>
-          <code>github.com/author/deck</code>
-          <span>↓ pinned .nut + SHA-256</span>
-          <code>deez nut import deck.nut</code>
+        <aside {...stylex.props(styles.surface, styles.flowCard)} aria-label="How deez.run works">
+          <code {...stylex.props(styles.flowCode)}>deez.run</code>
+          <span {...stylex.props(styles.flowStep)}>↓ Solid 2 SPA</span>
+          <code {...stylex.props(styles.flowCode)}>deez serve</code>
+          <span {...stylex.props(styles.flowStep)}>↓ FSRS + storage in Zig</span>
+          <code {...stylex.props(styles.flowCode)}>MongoDB / SQLite</code>
         </aside>
       </section>
 
-      <section class="section">
-        <div class="section-heading">
+      <section {...stylex.props(styles.section)}>
+        <div {...stylex.props(styles.sectionHeading)}>
           <div>
-            <p class="eyebrow">Registry</p>
-            <h2>Public nuts</h2>
+            <p {...stylex.props(styles.eyebrow)}>Registry</p>
+            <h2 {...stylex.props(styles.heading2)}>Public nuts</h2>
           </div>
           <a href="/nuts">Browse all</a>
         </div>
         <Show when={catalog.length > 0} fallback={<EmptyCatalog />}>
-          <div class="card-grid">
+          <div {...stylex.props(styles.cardGrid)}>
             <For each={catalog.slice(0, 6)}>{(nut) => <NutCard nut={nut} />}</For>
           </div>
         </Show>
@@ -102,17 +104,17 @@ export function HomePage() {
 
 export function NutsPage() {
   return (
-    <section class="section narrow-top">
+    <section {...stylex.props(styles.section, styles.narrowTop)}>
       <Seo
         title="Public nuts"
         description="Browse validated public Deez .nut decks with immutable GitHub source pins and SHA-256 checksums."
         path="/nuts"
       />
-      <p class="eyebrow">Browse</p>
-      <h1>Public nuts</h1>
-      <p class="lede">Validated metadata and immutable GitHub source pins. No account required.</p>
+      <p {...stylex.props(styles.eyebrow)}>Browse</p>
+      <h1 {...stylex.props(styles.heading1, styles.heading1Narrow)}>Public nuts</h1>
+      <p {...stylex.props(styles.lede)}>Validated metadata and immutable GitHub source pins. No account required.</p>
       <Show when={catalog.length > 0} fallback={<EmptyCatalog />}>
-        <div class="card-grid">
+        <div {...stylex.props(styles.cardGrid)}>
           <For each={catalog}>{(nut) => <NutCard nut={nut} />}</For>
         </div>
       </Show>
@@ -126,23 +128,23 @@ export function SearchPage() {
   const results = () => searchNuts(query());
 
   return (
-    <section class="section narrow-top">
+    <section {...stylex.props(styles.section, styles.narrowTop)}>
       <Seo
         title={query() ? `Search: ${query()}` : "Search"}
         description="Search public Deez nuts by name, description, tag, author, or note type."
         path={query() ? `/search?q=${encodeURIComponent(query())}` : "/search"}
         noindex
       />
-      <p class="eyebrow">Search</p>
-      <h1>Search the registry</h1>
-      <form class="search-box search-page" action="/search" method="get">
-        <label class="sr-only" for="search-query">Search public nuts</label>
-        <input id="search-query" name="q" type="search" value={query()} placeholder="Search by name, tag, author, or note type" />
-        <button type="submit">Search</button>
+      <p {...stylex.props(styles.eyebrow)}>Search</p>
+      <h1 {...stylex.props(styles.heading1, styles.heading1Narrow)}>Search the registry</h1>
+      <form {...stylex.props(styles.searchBox)} action="/search" method="get">
+        <label {...stylex.props(styles.srOnly)} for="search-query">Search public nuts</label>
+        <input {...stylex.props(styles.searchInput)} id="search-query" name="q" type="search" value={query()} placeholder="Search by name, tag, author, or note type" />
+        <button {...stylex.props(styles.button)} type="submit">Search</button>
       </form>
-      <p class="muted">{results().length} result{results().length === 1 ? "" : "s"}{query() ? ` for “${query()}”` : ""}</p>
+      <p {...stylex.props(styles.muted)}>{results().length} result{results().length === 1 ? "" : "s"}{query() ? ` for “${query()}”` : ""}</p>
       <Show when={results().length > 0} fallback={<EmptyCatalog />}>
-        <div class="card-grid">
+        <div {...stylex.props(styles.cardGrid)}>
           <For each={results()}>{(nut) => <NutCard nut={nut} />}</For>
         </div>
       </Show>
@@ -162,55 +164,55 @@ export function NutPage() {
         const fileName = `${item.slug}.nut`;
         const install = `curl -L '${latest.raw_url}' -o '${fileName}'\necho '${latest.sha256}  ${fileName}' | shasum -a 256 -c -\ndeez nut import '${fileName}'`;
         return (
-          <article class="section nut-detail narrow-top">
+          <article {...stylex.props(styles.section, styles.narrowTop)}>
             <Seo title={item.name} description={item.description} path={`/nuts/${item.slug}`} />
-            <p class="eyebrow">Nut · v{latest.version}</p>
-            <h1>{item.name}</h1>
-            <p class="lede">{item.description}</p>
-            <div class="tag-row">
-              <For each={item.tags}>{(tag) => <span class="tag">{tag}</span>}</For>
+            <p {...stylex.props(styles.eyebrow)}>Nut · v{latest.version}</p>
+            <h1 {...stylex.props(styles.heading1, styles.heading1Narrow)}>{item.name}</h1>
+            <p {...stylex.props(styles.lede)}>{item.description}</p>
+            <div {...stylex.props(styles.tagRow)}>
+              <For each={item.tags}>{(tag) => <span {...stylex.props(styles.tag)}>{tag}</span>}</For>
             </div>
 
-            <div class="detail-grid">
-              <section class="panel">
-                <h2>Deck details</h2>
-                <dl class="facts">
-                  <div><dt>Author</dt><dd><For each={item.authors}>{(author) => <a href={`/authors/${author.github}`}>{author.name ?? author.github}</a>}</For></dd></div>
-                  <div><dt>Notes</dt><dd>{latest.note_count}</dd></div>
-                  <div><dt>Cards</dt><dd>{latest.card_count}</dd></div>
-                  <div><dt>Format</dt><dd>{latest.nut_format} v{latest.nut_version}</dd></div>
-                  <div><dt>Size</dt><dd>{formatBytes(latest.size_bytes)}</dd></div>
-                  <div><dt>License</dt><dd>{item.license ?? "Not declared"}</dd></div>
-                  <div><dt>Note types</dt><dd>{latest.note_types.join(", ") || "None"}</dd></div>
+            <div {...stylex.props(styles.detailGrid)}>
+              <section {...stylex.props(styles.surface, styles.panel)}>
+                <h2 {...stylex.props(styles.heading2)}>Deck details</h2>
+                <dl {...stylex.props(styles.facts)}>
+                  <div {...stylex.props(styles.factRow)}><dt {...stylex.props(styles.factTerm)}>Author</dt><dd {...stylex.props(styles.factValue)}><For each={item.authors}>{(author) => <a href={`/authors/${author.github}`}>{author.name ?? author.github}</a>}</For></dd></div>
+                  <div {...stylex.props(styles.factRow)}><dt {...stylex.props(styles.factTerm)}>Notes</dt><dd {...stylex.props(styles.factValue)}>{latest.note_count}</dd></div>
+                  <div {...stylex.props(styles.factRow)}><dt {...stylex.props(styles.factTerm)}>Cards</dt><dd {...stylex.props(styles.factValue)}>{latest.card_count}</dd></div>
+                  <div {...stylex.props(styles.factRow)}><dt {...stylex.props(styles.factTerm)}>Format</dt><dd {...stylex.props(styles.factValue)}>{latest.nut_format} v{latest.nut_version}</dd></div>
+                  <div {...stylex.props(styles.factRow)}><dt {...stylex.props(styles.factTerm)}>Size</dt><dd {...stylex.props(styles.factValue)}>{formatBytes(latest.size_bytes)}</dd></div>
+                  <div {...stylex.props(styles.factRow)}><dt {...stylex.props(styles.factTerm)}>License</dt><dd {...stylex.props(styles.factValue)}>{item.license ?? "Not declared"}</dd></div>
+                  <div {...stylex.props(styles.factRow)}><dt {...stylex.props(styles.factTerm)}>Note types</dt><dd {...stylex.props(styles.factValue)}>{latest.note_types.join(", ") || "None"}</dd></div>
                 </dl>
               </section>
 
-              <section class="panel">
-                <h2>Immutable source</h2>
+              <section {...stylex.props(styles.surface, styles.panel)}>
+                <h2 {...stylex.props(styles.heading2)}>Immutable source</h2>
                 <p><a href={`https://github.com/${item.source.repository}`}>{item.source.repository}</a></p>
-                <p class="mono-wrap"><strong>Commit</strong><br />{latest.commit}</p>
-                <p class="mono-wrap"><strong>Path</strong><br />{latest.path}</p>
-                <p class="mono-wrap"><strong>SHA-256</strong><br />{latest.sha256}</p>
-                <div class="button-row">
-                  <a class="button" href={latest.raw_url}>Download .nut</a>
-                  <a class="button secondary" href={latest.source_url}>View source</a>
+                <p {...stylex.props(styles.monoWrap)}><strong>Commit</strong><br />{latest.commit}</p>
+                <p {...stylex.props(styles.monoWrap)}><strong>Path</strong><br />{latest.path}</p>
+                <p {...stylex.props(styles.monoWrap)}><strong>SHA-256</strong><br />{latest.sha256}</p>
+                <div {...stylex.props(styles.buttonRow)}>
+                  <a {...stylex.props(styles.button)} href={latest.raw_url}>Download .nut</a>
+                  <a {...stylex.props(styles.button, styles.buttonSecondary)} href={latest.source_url}>View source</a>
                 </div>
               </section>
             </div>
 
-            <section class="panel preview-panel">
-              <div class="section-heading">
-                <div><p class="eyebrow">Safe preview</p><h2>Sample notes</h2></div>
-                <span class="muted">Rendered as text, never user HTML</span>
+            <section {...stylex.props(styles.surface, styles.panel)}>
+              <div {...stylex.props(styles.sectionHeading)}>
+                <div><p {...stylex.props(styles.eyebrow)}>Safe preview</p><h2 {...stylex.props(styles.heading2)}>Sample notes</h2></div>
+                <span {...stylex.props(styles.muted)}>Rendered as text, never user HTML</span>
               </div>
               <Show when={latest.preview.length > 0} fallback={<p>No notes in this deck.</p>}>
-                <div class="preview-list">
+                <div {...stylex.props(styles.previewList)}>
                   <For each={latest.preview}>
                     {(note) => (
-                      <article class="preview-note">
-                        <div class="eyebrow">{note.note_type}</div>
-                        <For each={note.fields}>{(field, index) => <p><strong>Field {index() + 1}:</strong> {field}</p>}</For>
-                        <Show when={note.tags.length > 0}><p class="muted">Tags: {note.tags.join(", ")}</p></Show>
+                      <article {...stylex.props(styles.previewNote)}>
+                        <div {...stylex.props(styles.eyebrow)}>{note.note_type}</div>
+                        <For each={note.fields}>{(field, index) => <p {...stylex.props(styles.bodyCopy)}><strong>Field {index() + 1}:</strong> {field}</p>}</For>
+                        <Show when={note.tags.length > 0}><p {...stylex.props(styles.muted)}>Tags: {note.tags.join(", ")}</p></Show>
                       </article>
                     )}
                   </For>
@@ -218,11 +220,11 @@ export function NutPage() {
               </Show>
             </section>
 
-            <section class="panel">
-              <p class="eyebrow">Install locally</p>
-              <h2>Download, verify, import</h2>
-              <p>This uses the exact commit registered above. deez.run is not in the import path.</p>
-              <pre><code>{install}</code></pre>
+            <section {...stylex.props(styles.surface, styles.panel)}>
+              <p {...stylex.props(styles.eyebrow)}>Install locally</p>
+              <h2 {...stylex.props(styles.heading2)}>Download, verify, import</h2>
+              <p {...stylex.props(styles.bodyCopy)}>This uses the exact commit registered above. deez.run is not in the import path.</p>
+              <pre {...stylex.props(styles.pre)}><code>{install}</code></pre>
             </section>
           </article>
         );
@@ -236,17 +238,13 @@ export function AuthorPage() {
   const author = () => String(params.author ?? "");
   const entries = () => nutsByAuthor(author());
   return (
-    <section class="section narrow-top">
-      <Seo
-        title={`@${author()}`}
-        description={`Public Deez nuts published by GitHub author @${author()}.`}
-        path={`/authors/${author()}`}
-      />
-      <p class="eyebrow">Author</p>
-      <h1>@{author()}</h1>
+    <section {...stylex.props(styles.section, styles.narrowTop)}>
+      <Seo title={`@${author()}`} description={`Public Deez nuts published by GitHub author @${author()}.`} path={`/authors/${author()}`} />
+      <p {...stylex.props(styles.eyebrow)}>Author</p>
+      <h1 {...stylex.props(styles.heading1, styles.heading1Narrow)}>@{author()}</h1>
       <p><a href={`https://github.com/${author()}`}>View GitHub profile</a></p>
       <Show when={entries().length > 0} fallback={<p>No registered nuts for this author.</p>}>
-        <div class="card-grid"><For each={entries()}>{(nut) => <NutCard nut={nut} />}</For></div>
+        <div {...stylex.props(styles.cardGrid)}><For each={entries()}>{(nut) => <NutCard nut={nut} />}</For></div>
       </Show>
     </section>
   );
@@ -254,64 +252,48 @@ export function AuthorPage() {
 
 export function DocsPage() {
   return (
-    <section class="section prose narrow-top">
-      <Seo
-        title="Docs"
-        description="Learn how the deez.run public registry, .nut decks, .sack packages, checksums, and local Deez imports fit together."
-        path="/docs"
-      />
-      <p class="eyebrow">Docs</p>
-      <h1>How deez.run fits Deez</h1>
-      <p>deez.run is a public discovery layer, not the authoritative study database. Deez remains local-first and usable without an account.</p>
-      <h2>.nut</h2>
-      <p>A `.nut` v2 file is newline-delimited JSON: one deck header followed by logical note records. It contains shareable deck content, not review history or scheduler state.</p>
-      <h2>.sack</h2>
-      <p>A `.sack` is the ZIP-compatible rich-media transport for a `.nut` plus content-addressed media. The first deez.run milestone indexes textual `.nut` files only; large media hosting is intentionally deferred.</p>
-      <h2>Trust model</h2>
-      <p>Registry versions pin a full Git commit and SHA-256 of the exact `.nut` bytes. Public previews treat fields as untrusted text. A registry listing is not permission to execute content.</p>
-      <h2>Local import</h2>
-      <pre><code>deez nut import deck.nut</code></pre>
-      <p>Future CLI discovery can query the same generated catalog, but local Deez never needs deez.run to study existing decks.</p>
+    <section {...stylex.props(styles.section, styles.narrowTop, styles.prose)}>
+      <Seo title="Docs" description="Learn how deez.run, .nut decks, .sack packages, checksums, and the Deez Zig core fit together." path="/docs" />
+      <p {...stylex.props(styles.eyebrow)}>Docs</p>
+      <h1 {...stylex.props(styles.heading1, styles.heading1Narrow)}>How deez.run fits Deez</h1>
+      <p {...stylex.props(styles.proseCopy)}>deez.run is the web face of Deez. In production, the same Zig binary serves this SPA and the JSON API.</p>
+      <h2 {...stylex.props(styles.heading2)}> .nut</h2>
+      <p {...stylex.props(styles.proseCopy)}>A `.nut` v2 file is newline-delimited JSON: one deck header followed by logical note records. It contains shareable deck content, not review history or scheduler state.</p>
+      <h2 {...stylex.props(styles.heading2)}>.sack</h2>
+      <p {...stylex.props(styles.proseCopy)}>A `.sack` is the ZIP-compatible rich-media transport for a `.nut` plus content-addressed media.</p>
+      <h2 {...stylex.props(styles.heading2)}>Runtime</h2>
+      <p {...stylex.props(styles.proseCopy)}>Vite builds the Solid 2 SPA. At runtime, only the Deez Zig binary runs: it serves static files, API routes, FSRS scheduling, and MongoDB/SQLite storage.</p>
+      <h2 {...stylex.props(styles.heading2)}>Local import</h2>
+      <pre {...stylex.props(styles.pre)}><code>deez nut import deck.nut</code></pre>
     </section>
   );
 }
 
 export function PublishPage() {
   return (
-    <section class="section prose narrow-top">
-      <Seo
-        title="Publish"
-        description="Publish a public Deez .nut through the GitHub-backed deez.run registry using immutable commit pins and SHA-256 verification."
-        path="/publish"
-      />
-      <p class="eyebrow">Publish</p>
-      <h1>Publish a public nut</h1>
-      <p>The initial workflow is intentionally GitHub- and PR-based. deez.run does not mutate your GitHub account.</p>
+    <section {...stylex.props(styles.section, styles.narrowTop, styles.prose)}>
+      <Seo title="Publish" description="Publish a public Deez .nut through the GitHub-backed deez.run registry using immutable commit pins and SHA-256 verification." path="/publish" />
+      <p {...stylex.props(styles.eyebrow)}>Publish</p>
+      <h1 {...stylex.props(styles.heading1, styles.heading1Narrow)}>Publish a public nut</h1>
+      <p {...stylex.props(styles.proseCopy)}>The initial workflow is intentionally GitHub- and PR-based.</p>
       <ol>
-        <li>Put the `.nut` in a public GitHub repository and commit it.</li>
-        <li>Use the full 40-character commit SHA, not a mutable branch name.</li>
-        <li>Calculate SHA-256 over the exact `.nut` bytes at that commit.</li>
-        <li>Add or update one registry entry under <code>registry/nuts/</code>.</li>
-        <li>Open a pull request. CI fetches the pinned file, verifies the checksum, validates `.nut` v2, and derives search/preview metadata.</li>
-        <li>After merge, the generated catalog exposes the new version.</li>
+        <li {...stylex.props(styles.proseCopy)}>Put the `.nut` in a public GitHub repository and commit it.</li>
+        <li {...stylex.props(styles.proseCopy)}>Use the full 40-character commit SHA, not a mutable branch name.</li>
+        <li {...stylex.props(styles.proseCopy)}>Calculate SHA-256 over the exact `.nut` bytes at that commit.</li>
+        <li {...stylex.props(styles.proseCopy)}>Add or update one registry entry under <code>registry/nuts/</code>.</li>
+        <li {...stylex.props(styles.proseCopy)}>Open a pull request. CI verifies the checksum and `.nut` v2 metadata.</li>
       </ol>
-      <p>Eventually <code>deez nuts publish</code> can prepare these steps, but automated GitHub mutation is deliberately outside this milestone.</p>
-      <p><a class="button" href="https://github.com/chrisbirster/deez-run/tree/main/registry/nuts">View registry</a></p>
+      <p><a {...stylex.props(styles.button)} href="https://github.com/chrisbirster/deez-run/tree/main/registry/nuts">View registry</a></p>
     </section>
   );
 }
 
 export function NotFoundPage() {
   return (
-    <section class="section narrow-top">
-      <Seo
-        title="Not found"
-        description="This deez.run page was not found."
-        path="/404"
-        noindex
-      />
-      <p class="eyebrow">404</p>
-      <h1>That nut is not in the sack.</h1>
+    <section {...stylex.props(styles.section, styles.narrowTop)}>
+      <Seo title="Not found" description="This deez.run page was not found." path="/404" noindex />
+      <p {...stylex.props(styles.eyebrow)}>404</p>
+      <h1 {...stylex.props(styles.heading1, styles.heading1Narrow)}>That nut is not in the sack.</h1>
       <p><a href="/nuts">Browse public nuts</a> or <a href="/search">search the registry</a>.</p>
     </section>
   );

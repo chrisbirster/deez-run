@@ -12,9 +12,9 @@ concurrency:
 
 jobs:
   deploy:
-    name: verify and deploy
+    name: verify and deploy to Fly.io
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     environment: production
     steps:
       - uses: actions/checkout@v6
@@ -23,87 +23,10 @@ jobs:
           node-version: 24
       - run: npm install
       - run: npm run verify
-      - name: Normalize Cloudflare credentials
-        shell: bash
+      - name: Build production image
+        run: docker build --build-arg TARGETARCH=amd64 -t deez-run:deploy-check .
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy
+        run: flyctl deploy --remote-only
         env:
-          RAW_CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          RAW_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          trim_secret() {
-            local value="$1"
-            value="${value#"${value%%[![:space:]]*}"}"
-            value="${value%"${value##*[![:space:]]}"}"
-            printf '%s' "$value"
-          }
-
-          normalize_secret() {
-            local value="$1"
-            value="${value//$'\r'/}"
-            value="${value//$'\n'/}"
-
-            for _ in 1 2 3 4 5; do
-              local previous="$value"
-              value="$(trim_secret "$value")"
-              value="${value#\"}"
-              value="${value%\"}"
-              value="${value#\'}"
-              value="${value%\'}"
-              value="$(trim_secret "$value")"
-              value="${value#CLOUDFLARE_API_TOKEN=}"
-              value="${value#CLOUDFLARE_ACCOUNT_ID=}"
-              value="${value#Authorization:}"
-              value="${value#authorization:}"
-              value="$(trim_secret "$value")"
-              value="${value#Bearer }"
-              value="${value#bearer }"
-              value="$(trim_secret "$value")"
-              [[ "$value" == "$previous" ]] && break
-            done
-
-            printf '%s' "$value"
-          }
-
-          token="$(normalize_secret "$RAW_CLOUDFLARE_API_TOKEN")"
-          account="$(normalize_secret "$RAW_CLOUDFLARE_ACCOUNT_ID")"
-
-          if [[ -z "$token" || -z "$account" ]]; then
-            echo "Cloudflare credentials are missing after normalization." >&2
-            exit 1
-          fi
-
-          if [[ ! "$account" =~ ^[0-9a-fA-F]{32}$ ]]; then
-            echo "CLOUDFLARE_ACCOUNT_ID must be a 32-character Cloudflare account ID." >&2
-            exit 1
-          fi
-
-          if [[ "$token" =~ [[:space:]] || "$token" == *"="* || "$token" == *":"* || "$token" == *\"* || "$token" == *\'* || "$token" == *\`* ]]; then
-            echo "CLOUDFLARE_API_TOKEN still looks wrapped or contains non-token formatting after normalization." >&2
-            exit 1
-          fi
-
-          if (( ${#token} < 20 )); then
-            echo "CLOUDFLARE_API_TOKEN is unexpectedly short after normalization." >&2
-            exit 1
-          fi
-
-          echo "::add-mask::$token"
-          echo "::add-mask::$account"
-          printf 'CLOUDFLARE_API_TOKEN=%s\n' "$token" >> "$GITHUB_ENV"
-          printf 'CLOUDFLARE_ACCOUNT_ID=%s\n' "$account" >> "$GITHUB_ENV"
-      - name: Verify Cloudflare API token
-        shell: bash
-        run: |
-          status="$(curl --silent --show-error \
-            --output /tmp/cloudflare-token.json \
-            --write-out '%{http_code}' \
-            --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
-            https://api.cloudflare.com/client/v4/user/tokens/verify)"
-
-          if [[ "$status" != "200" ]]; then
-            node -e 'const fs=require("fs"); const r=JSON.parse(fs.readFileSync("/tmp/cloudflare-token.json","utf8")); for (const e of r.errors ?? []) console.error(`Cloudflare token verify failed: ${e.code} ${e.message}`);'
-            exit 1
-          fi
-
-          node -e 'const fs=require("fs"); const r=JSON.parse(fs.readFileSync("/tmp/cloudflare-token.json","utf8")); if (!r.success || r.result?.status !== "active") { console.error("Cloudflare API token is not active."); process.exit(1); }'
-      - name: Deploy Cloudflare Worker
-        run: npx wrangler deploy
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

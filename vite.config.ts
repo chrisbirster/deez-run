@@ -1,13 +1,22 @@
 import { defineConfig } from "vite";
 import solid from "@solidjs/vite-plugin";
+import stylex from "@stylexjs/unplugin";
 
 export default defineConfig({
   plugins: [
-    solid({
-      start: {
-        middleware: "./src/middleware.ts",
+    stylex.vite({
+      unstable_moduleResolution: {
+        type: "commonJS",
+        rootDir: process.cwd(),
       },
-      ssr: true,
     }),
+    solid(),
   ],
+  server: {
+    port: 5173,
+    strictPort: true,
+    proxy: {
+      "/api": "http://127.0.0.1:5882",
+    },
+  },
 });
