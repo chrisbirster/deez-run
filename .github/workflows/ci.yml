@@ -16,7 +16,7 @@ jobs:
       # Integration-only pin for draft Deez core PR #123. The Dockerfile default
       # remains on the last merged core until #123 lands, then it must be updated
       # to that immutable merged SHA before this PR is made ready.
-      DEEZ_AUTH_INTEGRATION_COMMIT: 39be61e14aea198f3d332acf47f4333ffcff4d18
+      DEEZ_AUTH_INTEGRATION_COMMIT: 36fc2f12bb2584fb019413748f0ee84ca14dbe45
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
