@@ -19,7 +19,7 @@ function response(statusCode: number): APIGatewayProxyStructuredResultV2 {
       "cache-control": "no-store",
       "content-type": "application/json",
     },
-    body: statusCode === 204 ? undefined : JSON.stringify({ ok: false }),
+    body: statusCode === 202 ? undefined : JSON.stringify({ ok: false }),
   };
 }
 
@@ -108,5 +108,5 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
     return response(502);
   }
 
-  return response(204);
+  return response(202);
 }
