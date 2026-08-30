@@ -16,7 +16,7 @@ https://email.deez.run/send-magic-link
 - custom MAIL FROM domain `bounce.auth.deez.run` with MX/SPF records
 - API Gateway HTTP API exposed at `email.deez.run`
 - `POST /send-magic-link` Lambda route
-- identity-scoped IAM permission containing only `ses:SendEmail`
+- SST-managed Lambda-to-SES permissions through the linked Email resource
 - `EmailRelayToken` SST secret
 - API Gateway throttling
 
@@ -127,6 +127,7 @@ fly secrets set \
 - The Lambda rejects payloads with fields other than `to` and `magic_link`.
 - Magic links must use the exact `https://deez.run/auth/magic?token=<64 hex>` shape.
 - The Lambda returns `202` only after SES accepts the send request.
-- The Lambda receives `ses:SendEmail` only, scoped to the `auth.deez.run` SES identity ARN; it is not granted raw-email or templated-email actions.
+- The Lambda's SES access is provisioned by SST by linking the `TransactionalEmail` resource to the relay function, matching the working Donegeon infrastructure pattern.
+- The HTTP relay remains intentionally narrow: callers cannot choose the sender, subject, or arbitrary body.
 - The `auth.deez.run` SES identity is isolated from existing apex `deez.run` inbound email configuration.
 - Do not alter existing apex MX or DMARC records as part of this deployment.
