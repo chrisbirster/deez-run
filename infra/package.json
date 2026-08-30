@@ -6,7 +6,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "check": "tsc --noEmit",
+    "check": "SST_TELEMETRY_DISABLED=1 sst install && tsc --noEmit",
     "deploy:production": "sst deploy --stage production",
     "remove:production": "sst remove --stage production"
   },
