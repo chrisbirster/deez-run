@@ -36,14 +36,21 @@ jobs:
           trap 'docker logs deez-run-smoke || true; docker rm -f deez-run-smoke >/dev/null 2>&1 || true' EXIT
 
           for _ in $(seq 1 30); do
-            if curl --fail --silent http://127.0.0.1:18080/api/v1/health > /tmp/health.json; then
+            if curl --fail --silent -D /tmp/health.headers http://127.0.0.1:18080/api/v1/health -o /tmp/health.json; then
               break
             fi
             sleep 1
           done
 
           grep -q '"status":"ok"' /tmp/health.json
+          grep -qi '^content-security-policy: .*frame-ancestors '\''none'\''' /tmp/health.headers
+          grep -qi '^cross-origin-opener-policy: same-origin' /tmp/health.headers
+          grep -qi '^x-content-type-options: nosniff' /tmp/health.headers
+          grep -qi '^x-frame-options: DENY' /tmp/health.headers
+
           curl --fail --silent http://127.0.0.1:18080/ > /tmp/index.html
           grep -q 'id="root"' /tmp/index.html
-          curl --fail --silent http://127.0.0.1:18080/nuts > /tmp/spa-fallback.html
+          curl --fail --silent -D /tmp/spa.headers http://127.0.0.1:18080/nuts -o /tmp/spa-fallback.html
           grep -q 'id="root"' /tmp/spa-fallback.html
+          grep -qi '^content-security-policy: .*script-src '\''self'\''' /tmp/spa.headers
+          grep -qi '^referrer-policy: strict-origin-when-cross-origin' /tmp/spa.headers
