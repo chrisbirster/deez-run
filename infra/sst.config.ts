@@ -56,7 +56,13 @@ export default $config({
       handler: "functions/send-magic-link.handler",
       timeout: "10 seconds",
       memory: "256 MB",
-      link: [authEmail, relayToken],
+      link: [relayToken],
+      permissions: [
+        {
+          actions: ["ses:SendEmail"],
+          resources: [authEmail.nodes.identity.arn],
+        },
+      ],
     });
 
     return {
