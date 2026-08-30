@@ -13,10 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
-      # Integration-only pin for draft Deez core PR #123. The Dockerfile default
-      # remains on the last merged core until #123 lands, then it must be updated
-      # to that immutable merged SHA before this PR is made ready.
-      DEEZ_AUTH_INTEGRATION_COMMIT: 36fc2f12bb2584fb019413748f0ee84ca14dbe45
+      DEEZ_CORE_COMMIT: 36fc2f12bb2584fb019413748f0ee84ca14dbe45
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -27,10 +24,10 @@ jobs:
       - name: Verify SES relay infrastructure
         working-directory: infra
         run: |
-          npm install
+          npm ci
           npm run check
-      - name: Build production image against hosted-auth integration commit
-        run: docker build --build-arg TARGETARCH=amd64 --build-arg DEEZ_COMMIT="$DEEZ_AUTH_INTEGRATION_COMMIT" -t deez-run:ci .
+      - name: Build production image against pinned Deez core
+        run: docker build --build-arg TARGETARCH=amd64 --build-arg DEEZ_COMMIT="$DEEZ_CORE_COMMIT" -t deez-run:ci .
       - name: Verify production runtime contains only Deez server requirements
         run: |
           docker run --rm --entrypoint /bin/sh deez-run:ci -c 'test -x /app/deez && test -f /app/web/index.html && ! command -v node && ! command -v npm && ! command -v zig && ! command -v python3'
