@@ -4,7 +4,9 @@ export default $config({
   app(input) {
     const production = input?.stage === "production";
     return {
-      name: "deez-run-email",
+      // This name is the identity of the already-deployed production stack.
+      // Changing it would create a second relay instead of updating production.
+      name: "deez-email",
       home: "aws",
       removal: production ? "retain" : "remove",
       protect: production,
@@ -24,7 +26,7 @@ export default $config({
     // SES identity and DKIM/MAIL FROM DNS are managed through Cloudflare.
     // This is intentionally a subdomain so existing apex mail/DMARC settings
     // for deez.run are not replaced by this stack.
-    const authEmail = new sst.aws.Email("AuthEmail", {
+    const authEmail = new sst.aws.Email("TransactionalEmail", {
       sender: "auth.deez.run",
       dns: sst.cloudflare.dns(),
       dmarc: "v=DMARC1; p=none; adkim=s; aspf=s;",
@@ -36,6 +38,10 @@ export default $config({
 
     const api = new sst.aws.ApiGatewayV2("EmailRelayApi", {
       cors: false,
+      domain: {
+        name: "email.deez.run",
+        dns: sst.cloudflare.dns(),
+      },
       accessLog: {
         retention: "1 week",
       },
