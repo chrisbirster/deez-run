@@ -72,7 +72,7 @@ export default $config({
     });
 
     return {
-      emailRelayEndpoint: $interpolate`${api.url}send-magic-link`,
+      emailRelayEndpoint: $interpolate`${api.url}/send-magic-link`,
       sesSenderDomain: authEmail.sender,
       fromAddress: "Deez <login@auth.deez.run>",
       region: "us-east-1",
