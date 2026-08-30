@@ -3,8 +3,8 @@
 FROM node:24-bookworm-slim AS web-build
 WORKDIR /src
 
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 COPY . .
 RUN npm run build
 

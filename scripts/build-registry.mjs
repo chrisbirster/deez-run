@@ -80,11 +80,20 @@ async function loadEntries() {
 try {
   const catalog = await loadEntries();
   const serialized = `${JSON.stringify(catalog, null, 2)}\n`;
-  if (!checkOnly) {
+  const sitemap = buildSitemap(catalog.entries);
+  if (checkOnly) {
+    const [committedCatalog, committedSitemap] = await Promise.all([
+      readFile(outputPath, "utf8"),
+      readFile(sitemapPath, "utf8"),
+    ]);
+    if (committedCatalog !== serialized || committedSitemap !== sitemap) {
+      throw new Error("generated catalog or sitemap is stale; run npm run registry:generate");
+    }
+  } else {
     await mkdir(publicDir, { recursive: true });
     await Promise.all([
       writeFile(outputPath, serialized, "utf8"),
-      writeFile(sitemapPath, buildSitemap(catalog.entries), "utf8"),
+      writeFile(sitemapPath, sitemap, "utf8"),
     ]);
   }
   console.log(`registry: validated ${catalog.entries.length} nut${catalog.entries.length === 1 ? "" : "s"}${checkOnly ? "" : " and generated catalog + sitemap"}`);

@@ -53,7 +53,7 @@ Prefer an app-scoped Fly deploy token rather than a broad personal token.
 Frontend verification:
 
 ```bash
-npm install
+npm ci
 npm run verify
 ```
 
@@ -105,7 +105,28 @@ Do not store the MongoDB URI in `fly.toml`, the Dockerfile, or repository secret
 
 ## Domain
 
-After the Fly deployment is healthy, attach `deez.run` to the `deez-run` Fly app and follow Fly's certificate/DNS instructions. Keep the apex hostname canonical; if `www.deez.run` is added later, redirect it to the apex.
+After the Fly deployment is healthy, attach the apex hostname and inspect the app-specific DNS requirements:
+
+```bash
+fly certs add deez.run -a deez-run
+fly certs setup deez.run -a deez-run
+```
+
+In Cloudflare:
+
+1. Add the `_fly-ownership` TXT value reported by `fly certs setup`.
+2. Add the reported apex A and AAAA records and enable the Cloudflare proxy (orange cloud). A flattened apex CNAME is also supported, but A and AAAA are the preferred Fly setup.
+3. Set SSL/TLS encryption mode to **Full (strict)**. Do not use Flexible mode because Fly already forces HTTPS and the combination creates redirect loops.
+4. Enable **Always Use HTTPS**.
+
+Then wait for both the Cloudflare edge certificate and Fly origin certificate to become active:
+
+```bash
+fly certs check deez.run -a deez-run
+curl --fail --show-error --silent https://deez.run/api/v1/health
+```
+
+Keep the apex hostname canonical; if `www.deez.run` is added later, redirect it to the apex.
 
 Before calling the deployment complete, verify:
 

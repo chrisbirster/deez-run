@@ -1,4 +1,182 @@
 {
   "schema_version": 1,
-  "entries": []
+  "entries": [
+    {
+      "schema_version": 1,
+      "slug": "zig-basics",
+      "name": "Zig Basics",
+      "description": "An introductory Deez nut covering core Zig language concepts such as comptime, optionals, error unions, defer, pointers, slices, and explicit allocators.",
+      "authors": [
+        {
+          "github": "chrisbirster",
+          "name": "Chris Birster"
+        }
+      ],
+      "tags": [
+        "basics",
+        "programming",
+        "systems-programming",
+        "zig"
+      ],
+      "license": null,
+      "source": {
+        "type": "github",
+        "repository": "chrisbirster/deez-nuts"
+      },
+      "latest": {
+        "version": "1.0.0",
+        "commit": "84a2e18d513688c7d07829a7c56081fdeff4b62c",
+        "path": "nuts/zig-basics/zig-basics.nut",
+        "sha256": "4cb0f4210011a5fa62e1b8e8ebcfaf66814b058403bf7bfe9dc122d9c9972bda",
+        "raw_url": "https://raw.githubusercontent.com/chrisbirster/deez-nuts/84a2e18d513688c7d07829a7c56081fdeff4b62c/nuts/zig-basics/zig-basics.nut",
+        "source_url": "https://github.com/chrisbirster/deez-nuts/blob/84a2e18d513688c7d07829a7c56081fdeff4b62c/nuts/zig-basics/zig-basics.nut",
+        "size_bytes": 2109,
+        "deck_name": "Zig Basics",
+        "nut_format": "deez.nut",
+        "nut_version": 2,
+        "note_count": 12,
+        "card_count": 16,
+        "note_types": [
+          "basic",
+          "basic-reverse",
+          "cloze"
+        ],
+        "preview": [
+          {
+            "note_type": "basic",
+            "fields": [
+              "What is Zig?",
+              "A general-purpose systems programming language focused on robustness, optimality, and maintainability."
+            ],
+            "tags": [
+              "zig",
+              "basics"
+            ]
+          },
+          {
+            "note_type": "basic",
+            "fields": [
+              "What does `comptime` mean in Zig?",
+              "The value or code is evaluated at compile time rather than runtime."
+            ],
+            "tags": [
+              "zig",
+              "comptime"
+            ]
+          },
+          {
+            "note_type": "basic-reverse",
+            "fields": [
+              "Zig optional type syntax",
+              "`?T`"
+            ],
+            "tags": [
+              "zig",
+              "types"
+            ]
+          },
+          {
+            "note_type": "basic-reverse",
+            "fields": [
+              "Zig error union syntax",
+              "`E!T` or `!T` when the error set is inferred"
+            ],
+            "tags": [
+              "zig",
+              "errors"
+            ]
+          },
+          {
+            "note_type": "basic",
+            "fields": [
+              "What does `try` do in Zig?",
+              "It unwraps a successful error union value, or returns the error from the current function."
+            ],
+            "tags": [
+              "zig",
+              "errors"
+            ]
+          }
+        ]
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "commit": "84a2e18d513688c7d07829a7c56081fdeff4b62c",
+          "path": "nuts/zig-basics/zig-basics.nut",
+          "sha256": "4cb0f4210011a5fa62e1b8e8ebcfaf66814b058403bf7bfe9dc122d9c9972bda",
+          "raw_url": "https://raw.githubusercontent.com/chrisbirster/deez-nuts/84a2e18d513688c7d07829a7c56081fdeff4b62c/nuts/zig-basics/zig-basics.nut",
+          "source_url": "https://github.com/chrisbirster/deez-nuts/blob/84a2e18d513688c7d07829a7c56081fdeff4b62c/nuts/zig-basics/zig-basics.nut",
+          "size_bytes": 2109,
+          "deck_name": "Zig Basics",
+          "nut_format": "deez.nut",
+          "nut_version": 2,
+          "note_count": 12,
+          "card_count": 16,
+          "note_types": [
+            "basic",
+            "basic-reverse",
+            "cloze"
+          ],
+          "preview": [
+            {
+              "note_type": "basic",
+              "fields": [
+                "What is Zig?",
+                "A general-purpose systems programming language focused on robustness, optimality, and maintainability."
+              ],
+              "tags": [
+                "zig",
+                "basics"
+              ]
+            },
+            {
+              "note_type": "basic",
+              "fields": [
+                "What does `comptime` mean in Zig?",
+                "The value or code is evaluated at compile time rather than runtime."
+              ],
+              "tags": [
+                "zig",
+                "comptime"
+              ]
+            },
+            {
+              "note_type": "basic-reverse",
+              "fields": [
+                "Zig optional type syntax",
+                "`?T`"
+              ],
+              "tags": [
+                "zig",
+                "types"
+              ]
+            },
+            {
+              "note_type": "basic-reverse",
+              "fields": [
+                "Zig error union syntax",
+                "`E!T` or `!T` when the error set is inferred"
+              ],
+              "tags": [
+                "zig",
+                "errors"
+              ]
+            },
+            {
+              "note_type": "basic",
+              "fields": [
+                "What does `try` do in Zig?",
+                "It unwraps a successful error union value, or returns the error from the current function."
+              ],
+              "tags": [
+                "zig",
+                "errors"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }
