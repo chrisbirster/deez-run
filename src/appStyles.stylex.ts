@@ -1,0 +1,33 @@
+import * as stylex from "@stylexjs/stylex";
+import { colors } from "./siteStyles.stylex";
+
+export const appStyles = stylex.create({
+  appShell: { display: "grid", gridTemplateColumns: "220px minmax(0, 1fr)", gap: 24, minHeight: "70vh", paddingBlock: 32, "@media (max-width: 760px)": { gridTemplateColumns: "1fr" } },
+  side: { alignSelf: "start", position: "sticky", top: 20, padding: 18, borderWidth: 1, borderStyle: "solid", borderColor: colors.line, borderRadius: 16, backgroundColor: colors.paper, "@media (max-width: 760px)": { position: "static" } },
+  sideNav: { display: "grid", gap: 6 },
+  sideLink: { display: "block", paddingBlock: 10, paddingInline: 12, borderRadius: 10, color: colors.ink, textDecoration: "none", backgroundColor: { default: "transparent", ":hover": colors.soft } },
+  main: { minWidth: 0 },
+  topRow: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 24 },
+  appHeading: { margin: 0, fontSize: "clamp(2rem, 5vw, 3.4rem)", lineHeight: 1, letterSpacing: "-0.045em" },
+  grid: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16, "@media (max-width: 680px)": { gridTemplateColumns: "1fr" } },
+  panel: { padding: 22, borderWidth: 1, borderStyle: "solid", borderColor: colors.line, borderRadius: 16, backgroundColor: colors.paper },
+  list: { display: "grid", gap: 12 },
+  listItem: { display: "block", padding: 18, borderWidth: 1, borderStyle: "solid", borderColor: colors.line, borderRadius: 13, backgroundColor: colors.paper, color: colors.ink, textDecoration: "none" },
+  row: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap" },
+  field: { display: "grid", gap: 7, marginBottom: 16 },
+  label: { fontSize: 13, fontWeight: 700 },
+  input: { width: "100%", paddingBlock: 12, paddingInline: 13, borderWidth: 1, borderStyle: "solid", borderColor: colors.line, borderRadius: 10, backgroundColor: colors.paper, color: colors.ink, font: "inherit" },
+  textarea: { width: "100%", minHeight: 120, resize: "vertical", paddingBlock: 12, paddingInline: 13, borderWidth: 1, borderStyle: "solid", borderColor: colors.line, borderRadius: 10, backgroundColor: colors.paper, color: colors.ink, font: "inherit", lineHeight: 1.5 },
+  select: { width: "100%", paddingBlock: 12, paddingInline: 13, borderWidth: 1, borderStyle: "solid", borderColor: colors.line, borderRadius: 10, backgroundColor: colors.paper, color: colors.ink, font: "inherit" },
+  actions: { display: "flex", gap: 10, flexWrap: "wrap" },
+  danger: { borderColor: "#9f3333", color: "#842626", backgroundColor: { default: "transparent", ":hover": "#f9e7e7" } },
+  error: { padding: 14, marginBottom: 16, borderWidth: 1, borderStyle: "solid", borderColor: "#c66", borderRadius: 10, backgroundColor: "#fff0f0", color: "#7a2020" },
+  success: { padding: 14, marginBottom: 16, borderWidth: 1, borderStyle: "solid", borderColor: "#8cb497", borderRadius: 10, backgroundColor: "#edf8ef" },
+  muted: { color: colors.muted },
+  mono: { fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", overflowWrap: "anywhere" },
+  studyCard: { minHeight: 300, display: "grid", alignContent: "center", gap: 20, padding: "clamp(24px, 6vw, 64px)", borderWidth: 1, borderStyle: "solid", borderColor: colors.line, borderRadius: 20, backgroundColor: colors.paper, textAlign: "center" },
+  studyFace: { fontSize: "clamp(1.4rem, 4vw, 2.4rem)", lineHeight: 1.4, whiteSpace: "pre-wrap" },
+  ratingGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, "@media (max-width: 620px)": { gridTemplateColumns: "repeat(2, 1fr)" } },
+  authWrap: { maxWidth: 520, marginInline: "auto", paddingBlock: 72 },
+  authCard: { padding: 28, borderWidth: 1, borderStyle: "solid", borderColor: colors.line, borderRadius: 18, backgroundColor: colors.paper },
+});
