@@ -4,7 +4,6 @@ import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from "
 import { Resource } from "sst";
 
 const ses = new SESv2Client({ region: "us-east-1" });
-const fromAddress = "Deez <login@auth.deez.run>";
 const magicLinkPattern = /^https:\/\/deez\.run\/auth\/magic\?token=[0-9a-fA-F]{64}$/;
 
 type Payload = {
@@ -87,9 +86,12 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
   const payload = parsePayload(event.body);
   if (!payload) return response(400);
 
+  const fromAddress = `Deez <login@${Resource.AuthEmail.sender}>`;
+
   try {
     await ses.send(new SendEmailCommand({
       FromEmailAddress: fromAddress,
+      ConfigurationSetName: Resource.AuthEmail.configSet,
       Destination: { ToAddresses: [payload.to] },
       Content: {
         Simple: {
