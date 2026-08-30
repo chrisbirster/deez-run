@@ -12,7 +12,7 @@ It uses AWS SES for delivery and Cloudflare only for DNS management. It does **n
 - custom MAIL FROM domain `bounce.auth.deez.run` with MX/SPF records
 - API Gateway HTTP API
 - `POST /send-magic-link` Lambda route
-- linked SES send permission for the Lambda
+- identity-scoped IAM permission containing only `ses:SendEmail`
 - `EmailRelayToken` SST secret
 - API Gateway throttling
 
@@ -52,6 +52,8 @@ cd infra
 npm install
 npm run check
 ```
+
+`npm run check` installs SST's pinned provider packages and typechecks the Lambda code owned by this repository. The first real `sst deploy` is the credentialed synthesis/deployment check for the AWS and Cloudflare resources.
 
 ## Create the relay secret
 
@@ -97,5 +99,6 @@ After production access is granted, verify a real magic-link email reaches Gmail
 - The shared bearer secret is checked before parsing/sending.
 - The Lambda rejects payloads with fields other than `to` and `magic_link`.
 - Magic links must use the exact `https://deez.run/auth/magic?token=<64 hex>` shape.
+- The Lambda receives `ses:SendEmail` only, scoped to the `auth.deez.run` SES identity ARN; it is not granted raw-email or templated-email actions.
 - The `auth.deez.run` SES identity is isolated from existing apex `deez.run` inbound email configuration.
 - Do not alter existing apex MX or DMARC records as part of this deployment.
