@@ -29,7 +29,7 @@ Deez Zig on Fly
     v
 API Gateway + Lambda (SST)
     |
-    | ses:SendEmail
+    | SST-linked Email resource
     v
 AWS SES (us-east-1)
     |
@@ -39,7 +39,7 @@ Deez <login@auth.deez.run>
 
 The Lambda is not a generic email relay. It accepts exactly `to` and `magic_link`, requires the link to be a canonical `https://deez.run/auth/magic?token=<64 hex>` URL, and owns the subject plus HTML/text templates. It does not accept arbitrary sender, subject, or body fields.
 
-Infrastructure lives in [`infra/`](../infra/README.md). SST's Email component manages the SES identity and Cloudflare verification records; the stack also provisions the custom MAIL FROM domain, API Gateway, Lambda, IAM permission, and throttling.
+Infrastructure lives in [`infra/`](../infra/README.md). SST's Email component manages the SES identity and Cloudflare verification records; the stack also provisions the custom MAIL FROM domain, API Gateway, Lambda, throttling, and Lambda-to-SES permissions through the linked Email resource.
 
 ## Production configuration
 
@@ -59,7 +59,8 @@ The Zig server reads the endpoint and token from the environment. The relay endp
 - HTTP `202` is the only successful relay response; every other status is delivery failure.
 - Magic-link request responses remain generic and do not reveal whether an email already has an account.
 - Deez keeps per-email request throttling; API Gateway adds a second coarse throttle in front of the relay.
-- The Lambda has only `ses:SendEmail`, scoped to the `auth.deez.run` SES identity ARN. It is not granted raw-email or templated-email actions.
+- SST provisions the Lambda's SES access by linking the `TransactionalEmail` resource, matching the working Donegeon pattern.
+- The externally reachable relay remains narrow and fixed-purpose: callers cannot choose sender, subject, or arbitrary email body.
 
 ## Public vs personal data
 

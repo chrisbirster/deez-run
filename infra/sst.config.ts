@@ -62,13 +62,10 @@ export default $config({
       handler: "functions/send-magic-link.handler",
       timeout: "10 seconds",
       memory: "256 MB",
-      link: [relayToken],
-      permissions: [
-        {
-          actions: ["ses:SendEmail"],
-          resources: [authEmail.nodes.identity.arn],
-        },
-      ],
+      // Let SST own the Lambda -> SES permissions through the Email resource.
+      // This matches the working Donegeon pattern and avoids a runtime SES
+      // AccessDeniedException seen with a hand-written identity-ARN policy.
+      link: [authEmail, relayToken],
     });
 
     return {
