@@ -3,14 +3,14 @@
 FROM node:24-bookworm-slim AS web-build
 WORKDIR /src
 
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 COPY . .
 RUN npm run build
 
 FROM debian:bookworm-slim AS deez-build
 ARG TARGETARCH
-ARG DEEZ_COMMIT=f49ce2672ef9b5fc1fe566ac2d972cde593c64b8
+ARG DEEZ_COMMIT=36fc2f12bb2584fb019413748f0ee84ca14dbe45
 ARG ZIG_VERSION=0.16.0
 
 RUN apt-get update \

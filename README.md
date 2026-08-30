@@ -42,7 +42,7 @@ Application styling lives in StyleX. The small static build is served directly b
 Install and run the frontend dev server:
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 

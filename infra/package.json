@@ -1,0 +1,22 @@
+{
+  "name": "deez-run-email-infra",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "check": "SST_TELEMETRY_DISABLED=1 sst install && tsc --noEmit",
+    "deploy:production": "sst deploy --stage production",
+    "remove:production": "sst remove --stage production"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sesv2": "3.1121.0",
+    "sst": "4.17.1"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "8.10.152",
+    "@types/node": "22.10.0",
+    "typescript": "5.7.2"
+  }
+}

@@ -21,7 +21,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - run: npm install
+      - run: npm ci
       - run: npm run verify
       - name: Build production image
         run: docker build --build-arg TARGETARCH=amd64 -t deez-run:deploy-check .

@@ -17,6 +17,8 @@ function Layout(props: ParentProps) {
             <a {...stylex.props(styles.navLink)} href="/search">Search</a>
             <a {...stylex.props(styles.navLink)} href="/docs">Docs</a>
             <a {...stylex.props(styles.navLink)} href="/publish">Publish</a>
+            <a {...stylex.props(styles.navLink)} href="/app">My Deez</a>
+            <a {...stylex.props(styles.navLink)} href="/login">Sign in</a>
           </nav>
         </header>
         <main>{props.children}</main>
