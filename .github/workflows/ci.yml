@@ -12,6 +12,11 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    env:
+      # Integration-only pin for draft Deez core PR #123. The Dockerfile default
+      # remains on the last merged core until #123 lands, then it must be updated
+      # to that immutable merged SHA before this PR is made ready.
+      DEEZ_AUTH_INTEGRATION_COMMIT: 42b6cd99df6bef4896a7c63502194ba14696a76c
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -19,8 +24,13 @@ jobs:
           node-version: 24
       - run: npm install
       - run: npm run verify
-      - name: Build production image
-        run: docker build --build-arg TARGETARCH=amd64 -t deez-run:ci .
+      - name: Verify SES relay infrastructure
+        working-directory: infra
+        run: |
+          npm install
+          npm run check
+      - name: Build production image against hosted-auth integration commit
+        run: docker build --build-arg TARGETARCH=amd64 --build-arg DEEZ_COMMIT="$DEEZ_AUTH_INTEGRATION_COMMIT" -t deez-run:ci .
       - name: Verify production runtime contains only Deez server requirements
         run: |
           docker run --rm --entrypoint /bin/sh deez-run:ci -c 'test -x /app/deez && test -f /app/web/index.html && ! command -v node && ! command -v npm && ! command -v zig && ! command -v python3'
@@ -35,8 +45,8 @@ jobs:
             -e DEEZ_STORAGE=mongodb \
             -e DEEZ_MONGO_URI='mongodb://deez-run-mongo:27017/deez_ci' \
             -e DEEZ_AUTH_BASE_URL='https://deez.run' \
-            -e DEEZ_RESEND_API_KEY='ci-not-used' \
-            -e DEEZ_AUTH_FROM='Deez <login@example.invalid>' \
+            -e DEEZ_EMAIL_ENDPOINT='https://email-relay.invalid/send-magic-link' \
+            -e DEEZ_EMAIL_RELAY_TOKEN='ci-not-used' \
             -p 18080:8080 \
             deez-run:ci
           trap 'docker logs deez-run-smoke || true; docker rm -f deez-run-smoke deez-run-mongo >/dev/null 2>&1 || true; docker network rm deez-run-ci >/dev/null 2>&1 || true' EXIT
