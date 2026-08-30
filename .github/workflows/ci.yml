@@ -24,18 +24,24 @@ jobs:
       - name: Verify production runtime contains only Deez server requirements
         run: |
           docker run --rm --entrypoint /bin/sh deez-run:ci -c 'test -x /app/deez && test -f /app/web/index.html && ! command -v node && ! command -v npm && ! command -v zig && ! command -v python3'
-      - name: Smoke-test Zig API and SPA serving
+      - name: Smoke-test Zig API, hosted auth boundary, and SPA serving
         shell: bash
         run: |
           set -euo pipefail
+          docker network create deez-run-ci >/dev/null
+          docker run -d --name deez-run-mongo --network deez-run-ci mongo:8 >/dev/null
           docker run -d --name deez-run-smoke \
-            -e DEEZ_STORAGE=sqlite \
-            -e DEEZ_DB=/tmp/deez.db \
+            --network deez-run-ci \
+            -e DEEZ_STORAGE=mongodb \
+            -e DEEZ_MONGO_URI='mongodb://deez-run-mongo:27017/deez_ci' \
+            -e DEEZ_AUTH_BASE_URL='https://deez.run' \
+            -e DEEZ_RESEND_API_KEY='ci-not-used' \
+            -e DEEZ_AUTH_FROM='Deez <login@example.invalid>' \
             -p 18080:8080 \
             deez-run:ci
-          trap 'docker logs deez-run-smoke || true; docker rm -f deez-run-smoke >/dev/null 2>&1 || true' EXIT
+          trap 'docker logs deez-run-smoke || true; docker rm -f deez-run-smoke deez-run-mongo >/dev/null 2>&1 || true; docker network rm deez-run-ci >/dev/null 2>&1 || true' EXIT
 
-          for _ in $(seq 1 30); do
+          for _ in $(seq 1 45); do
             if curl --fail --silent -D /tmp/health.headers http://127.0.0.1:18080/api/v1/health -o /tmp/health.json; then
               break
             fi
@@ -48,9 +54,13 @@ jobs:
           grep -qi '^x-content-type-options: nosniff' /tmp/health.headers
           grep -qi '^x-frame-options: DENY' /tmp/health.headers
 
+          private_status="$(curl --silent --output /tmp/private.json --write-out '%{http_code}' http://127.0.0.1:18080/api/v1/decks)"
+          test "$private_status" = '401'
+          grep -q 'authentication_required' /tmp/private.json
+
           curl --fail --silent http://127.0.0.1:18080/ > /tmp/index.html
           grep -q 'id="root"' /tmp/index.html
           curl --fail --silent -D /tmp/spa.headers http://127.0.0.1:18080/nuts -o /tmp/spa-fallback.html
           grep -q 'id="root"' /tmp/spa-fallback.html
           grep -qi '^content-security-policy: .*script-src '\''self'\''' /tmp/spa.headers
-          grep -qi '^referrer-policy: strict-origin-when-cross-origin' /tmp/spa.headers
+          grep -qi '^referrer-policy: no-referrer' /tmp/spa.headers
