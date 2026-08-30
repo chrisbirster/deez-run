@@ -13,7 +13,7 @@ export default $config({
           version: "7.30.0",
           region: "us-east-1",
         },
-        cloudflare: "6.14.0",
+        cloudflare: "6.15.0",
       },
     };
   },
