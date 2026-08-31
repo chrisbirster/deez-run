@@ -62,10 +62,25 @@ export default $config({
       handler: "functions/send-magic-link.handler",
       timeout: "10 seconds",
       memory: "256 MB",
-      // Let SST own the Lambda -> SES permissions through the Email resource.
-      // This matches the working Donegeon pattern and avoids a runtime SES
-      // AccessDeniedException seen with a hand-written identity-ARN policy.
-      link: [authEmail, relayToken],
+      link: [relayToken],
+      // SES rejected the identity-ARN-only SendEmail grant at runtime even
+      // though IAM simulation reported it as allowed. Resource "*" with an
+      // exact From-address condition is the narrow permission proven to work
+      // in production, without SST Email's broader ses:* / raw / templated
+      // grants.
+      permissions: [
+        {
+          actions: ["ses:SendEmail"],
+          resources: ["*"],
+          conditions: [
+            {
+              test: "StringEquals",
+              variable: "ses:FromAddress",
+              values: ["login@auth.deez.run"],
+            },
+          ],
+        },
+      ],
     });
 
     return {
