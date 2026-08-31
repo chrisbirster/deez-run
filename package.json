@@ -10,7 +10,7 @@
     "dev": "npm run registry:generate && vite",
     "registry:generate": "node scripts/build-registry.mjs",
     "registry:check": "node scripts/build-registry.mjs --check",
-    "test": "node --test test/registry.test.mjs",
+    "test": "node --test test/registry.test.mjs test/stylex-solid.test.mjs",
     "typecheck": "tsc --noEmit",
     "build": "npm run registry:generate && vite build",
     "verify": "npm run registry:check && npm test && npm run typecheck && npm run build"

@@ -10,7 +10,7 @@ export function Stack(props: {
 }) {
   return (
     <div
-      {...stylex.props(
+      {...stylex.attrs(
         primitives.stack,
         props.direction === "row" && primitives.row,
         props.align === "start" && primitives.alignStart,
@@ -31,7 +31,7 @@ export function Text(props: {
 }) {
   return (
     <span
-      {...stylex.props(
+      {...stylex.attrs(
         primitives.text,
         props.tone === "muted" && primitives.muted,
         props.tone === "accent" && primitives.accent,
@@ -55,7 +55,7 @@ export function Button(props: {
       type={props.type ?? "button"}
       disabled={props.disabled}
       onClick={() => props.onClick?.()}
-      {...stylex.props(primitives.button)}
+      {...stylex.attrs(primitives.button)}
     >
       {props.children}
     </button>
@@ -63,7 +63,7 @@ export function Button(props: {
 }
 
 export function Surface(props: { children?: JSX.Element }) {
-  return <section {...stylex.props(primitives.surface)}>{props.children}</section>;
+  return <section {...stylex.attrs(primitives.surface)}>{props.children}</section>;
 }
 
 const primitives = stylex.create({
