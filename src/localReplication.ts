@@ -193,12 +193,25 @@ async function flushReview(item: OutboxItem) {
       return;
     }
   }
-  if (card) await localDb.putCard({ ...card, pending_review: false });
   await localDb.deleteOutbox(item.id);
+  if (card) {
+    const remaining = (await localDb.outbox()).some((queued) => queued.kind === "review" && queued.entity_id === card.id);
+    await localDb.putCard({ ...card, pending_review: remaining });
+  }
+}
+
+function orderedOutbox(items: OutboxItem[]) {
+  return [...items].sort((left, right) => {
+    if (left.kind === "review" && right.kind === "review" && left.entity_id === right.entity_id) {
+      const expected = Number(left.payload.expected_review_count) - Number(right.payload.expected_review_count);
+      if (expected) return expected;
+    }
+    return left.created_at_ms - right.created_at_ms || left.id.localeCompare(right.id);
+  });
 }
 
 async function flushOutbox() {
-  const items = await localDb.outbox();
+  const items = orderedOutbox(await localDb.outbox());
   for (const item of items) {
     if (item.conflict) continue;
     if (!navigator.onLine) break;
@@ -280,9 +293,13 @@ async function pullSnapshot() {
     const noteByRemote = new Map(refreshedNotes.filter((note) => note.remote_id).map((note) => [note.remote_id!, note]));
 
     for (const summary of remoteCards) {
-      const [detail, preview] = await Promise.all([remoteApi.getCard(summary.id), remoteApi.previewStudy(summary.id)]);
       const existing = byRemoteCard.get(summary.id);
       seenRemoteCards.add(summary.id);
+      // Never overwrite a local card while it still has a queued review or a
+      // replication conflict. Its immutable local history remains the source
+      // we must either replay or explicitly resolve.
+      if (existing && dirtyEntities.has(existing.id)) continue;
+      const [detail, preview] = await Promise.all([remoteApi.getCard(summary.id), remoteApi.previewStudy(summary.id)]);
       const localNoteId = detail.note_id ? noteByRemote.get(detail.note_id)?.id : undefined;
       const record: LocalCard = {
         id: existing?.id ?? summary.id,
@@ -293,7 +310,7 @@ async function pullSnapshot() {
         detail: { ...detail, deck_id: localDeck.id, note_id: localNoteId },
         preview,
         due_at_ms: summary.due_at_ms ?? 0,
-        pending_review: existing?.pending_review ?? false,
+        pending_review: false,
       };
       await localDb.putCard(record);
     }
