@@ -29,6 +29,8 @@ export type QueuedReview = {
   rating: Rating;
   expectedReviewCount: number;
   reviewedAtMs: number;
+  state?: "pending" | "conflict";
+  conflict?: string;
 };
 
 function request<T = undefined>(value: IDBRequest<T>) {
@@ -133,6 +135,9 @@ async function warmMedia(detail: CardDetail) {
 }
 
 export async function prepareDeckOffline(deckId: string, onProgress?: (done: number, total: number) => void) {
+  const queued = (await queuedReviews()).filter((item) => item.deckId === deckId);
+  if (queued.length) throw new Error("Sync or resolve this deck's queued offline reviews before refreshing its offline copy.");
+
   const [deck, summaries] = await Promise.all([appApi.getDeck(deckId), appApi.listCards(deckId)]);
   const cards: OfflineCard[] = [];
   let done = 0;
@@ -159,10 +164,11 @@ export async function offlineDeck(deckId: string) {
 }
 
 export async function nextOfflineCard(deckId: string, now = Date.now()) {
-  const deck = await getDeck(deckId);
+  const [deck, queue] = await Promise.all([getDeck(deckId), queuedReviews()]);
   if (!deck) return undefined;
+  const queuedCardIds = new Set(queue.filter((item) => item.deckId === deckId).map((item) => item.cardId));
   return deck.cards
-    .filter((card) => !card.pendingReview && card.dueAtMs <= now)
+    .filter((card) => !card.pendingReview && !queuedCardIds.has(card.detail.id) && card.dueAtMs <= now)
     .sort((a, b) => a.dueAtMs - b.dueAtMs)[0];
 }
 
@@ -172,6 +178,8 @@ export async function queueOfflineReview(deckId: string, cardId: string, rating:
   const card = deck.cards.find((candidate) => candidate.detail.id === cardId);
   if (!card) throw new Error("This card is not in the offline deck cache.");
   if (card.pendingReview) throw new Error("This card already has an offline review waiting to sync.");
+  const existing = (await queuedReviews()).find((item) => item.cardId === cardId);
+  if (existing) throw new Error("This card already has a durable review in the offline outbox.");
 
   const key: Record<Rating, "again" | "hard" | "good" | "easy"> = {
     1: "again",
@@ -180,11 +188,6 @@ export async function queueOfflineReview(deckId: string, cardId: string, rating:
     4: "easy",
   };
   const candidate = card.preview.schedule[key[rating]];
-  card.pendingReview = true;
-  card.dueAtMs = candidate.due_at_ms;
-  card.summary = { ...card.summary, due_at_ms: candidate.due_at_ms, last_reviewed_at_ms: reviewedAtMs };
-  await putDeck(deck);
-
   const item: QueuedReview = {
     id: `${cardId}:${reviewedAtMs}`,
     deckId,
@@ -192,62 +195,108 @@ export async function queueOfflineReview(deckId: string, cardId: string, rating:
     rating,
     expectedReviewCount: card.preview.review_count,
     reviewedAtMs,
+    state: "pending",
   };
+
+  // Persist the outbox entry first. If the app is killed between these two
+  // writes, nextOfflineCard also consults the outbox and will not offer the
+  // card a second time.
   await putQueueItem(item);
+  card.pendingReview = true;
+  card.dueAtMs = candidate.due_at_ms;
+  card.summary = { ...card.summary, due_at_ms: candidate.due_at_ms, last_reviewed_at_ms: reviewedAtMs };
+  await putDeck(deck);
   return item;
 }
 
 async function refreshCard(deckId: string, cardId: string) {
+  const [detail, preview, summaries] = await Promise.all([
+    appApi.getCard(cardId),
+    appApi.previewStudy(cardId),
+    appApi.listCards(deckId),
+  ]);
+  const summary = summaries.find((candidate) => candidate.id === cardId);
+  if (!summary) throw new Error("The reviewed card no longer exists in the server deck.");
+
   const deck = await getDeck(deckId);
   if (!deck) return;
   const index = deck.cards.findIndex((candidate) => candidate.detail.id === cardId);
   if (index < 0) return;
-  const [detail, preview] = await Promise.all([appApi.getCard(cardId), appApi.previewStudy(cardId)]);
-  const current = deck.cards[index];
   deck.cards[index] = {
-    ...current,
+    summary,
     detail,
     preview,
-    dueAtMs: detail.reviews?.at(-1)?.reviewed_at_ms === current.summary.last_reviewed_at_ms
-      ? current.dueAtMs
-      : current.dueAtMs,
+    dueAtMs: summary.due_at_ms ?? 0,
     pendingReview: false,
   };
-  const summaries = await appApi.listCards(deckId);
-  const summary = summaries.find((candidate) => candidate.id === cardId);
-  if (summary) {
-    deck.cards[index].summary = summary;
-    deck.cards[index].dueAtMs = summary.due_at_ms ?? 0;
-  }
   await putDeck(deck);
 }
 
+function reviewAlreadyApplied(item: QueuedReview, detail: CardDetail) {
+  const review = detail.reviews?.[item.expectedReviewCount];
+  return review?.rating === item.rating && review.reviewed_at_ms === item.reviewedAtMs;
+}
+
+async function acknowledgeReview(item: QueuedReview) {
+  // Refresh the cached card first, then delete the durable outbox item. If the
+  // process dies between these operations, replay sees the immutable history
+  // match and safely acknowledges it on the next attempt.
+  await refreshCard(item.deckId, item.cardId);
+  await deleteQueueItem(item.id);
+}
+
+export async function discardQueuedReview(id: string) {
+  if (!navigator.onLine) throw new Error("Reconnect before resolving an offline review conflict.");
+  const item = (await queuedReviews()).find((candidate) => candidate.id === id);
+  if (!item) return;
+  await refreshCard(item.deckId, item.cardId);
+  await deleteQueueItem(item.id);
+}
+
 export async function flushOfflineReviews() {
-  if (!navigator.onLine) return { synced: 0, remaining: (await queuedReviews()).length };
+  if (!navigator.onLine) {
+    const queue = await queuedReviews();
+    return { synced: 0, remaining: queue.length, conflicts: queue.filter((item) => item.state === "conflict").length };
+  }
   const queue = await queuedReviews();
   let synced = 0;
   for (const item of queue) {
     try {
       await appApi.review(item.cardId, item.rating, item.expectedReviewCount, item.reviewedAtMs);
-      await deleteQueueItem(item.id);
-      await refreshCard(item.deckId, item.cardId);
+      await acknowledgeReview(item);
       synced += 1;
     } catch (reason) {
       if (reason instanceof ApiError && reason.status === 401) break;
-      if (reason instanceof ApiError && reason.status === 409) continue;
+      if (reason instanceof ApiError && reason.status === 409) {
+        const detail = await appApi.getCard(item.cardId);
+        if (reviewAlreadyApplied(item, detail)) {
+          await acknowledgeReview(item);
+          synced += 1;
+          continue;
+        }
+        await putQueueItem({
+          ...item,
+          state: "conflict",
+          conflict: "Server review history diverged from this offline review. Choose which history to keep before refreshing the offline deck.",
+        });
+        continue;
+      }
       if (!navigator.onLine) break;
       throw reason;
     }
   }
-  return { synced, remaining: (await queuedReviews()).length };
+  const remaining = await queuedReviews();
+  return { synced, remaining: remaining.length, conflicts: remaining.filter((item) => item.state === "conflict").length };
 }
 
 export async function offlineStatus(deckId: string) {
   const [deck, queue] = await Promise.all([getDeck(deckId), queuedReviews()]);
+  const pending = queue.filter((item) => item.deckId === deckId);
   return {
     ready: Boolean(deck),
     downloadedAtMs: deck?.downloadedAtMs,
     cards: deck?.cards.length ?? 0,
-    pendingReviews: queue.filter((item) => item.deckId === deckId).length,
+    pendingReviews: pending.length,
+    conflicts: pending.filter((item) => item.state === "conflict").length,
   };
 }
