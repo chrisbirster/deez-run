@@ -125,6 +125,18 @@ async function remove(storeName: string, key: IDBValidKey) {
   }
 }
 
+async function putWithOutbox<T>(storeName: string, value: T, outbox: OutboxItem) {
+  const database = await db();
+  try {
+    const transaction = database.transaction([storeName, OUTBOX], "readwrite");
+    transaction.objectStore(storeName).put(value);
+    transaction.objectStore(OUTBOX).put(outbox);
+    await txDone(transaction);
+  } finally {
+    database.close();
+  }
+}
+
 export function localId(prefix: "deck" | "note" | "review") {
   return `${prefix}:local:${crypto.randomUUID()}`;
 }
@@ -133,16 +145,19 @@ export const localDb = {
   decks: () => all<LocalDeck>(DECKS),
   deck: (id: string) => get<LocalDeck>(DECKS, id),
   putDeck: (value: LocalDeck) => put(DECKS, value),
+  putDeckWithOutbox: (value: LocalDeck, outbox: OutboxItem) => putWithOutbox(DECKS, value, outbox),
   deleteDeckRecord: (id: string) => remove(DECKS, id),
 
   notes: () => all<LocalNote>(NOTES),
   note: (id: string) => get<LocalNote>(NOTES, id),
   putNote: (value: LocalNote) => put(NOTES, value),
+  putNoteWithOutbox: (value: LocalNote, outbox: OutboxItem) => putWithOutbox(NOTES, value, outbox),
   deleteNoteRecord: (id: string) => remove(NOTES, id),
 
   cards: () => all<LocalCard>(CARDS),
   card: (id: string) => get<LocalCard>(CARDS, id),
   putCard: (value: LocalCard) => put(CARDS, value),
+  putCardWithOutbox: (value: LocalCard, outbox: OutboxItem) => putWithOutbox(CARDS, value, outbox),
   deleteCardRecord: (id: string) => remove(CARDS, id),
 
   outbox: async () => (await all<OutboxItem>(OUTBOX)).sort((a, b) => a.created_at_ms - b.created_at_ms || a.id.localeCompare(b.id)),
