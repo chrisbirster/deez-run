@@ -16,11 +16,21 @@ export type FieldDefinition = { ordinal: number; name: string };
 export type NoteTypeDefinition = { id: ApiId; slug: string; name: string; fields: FieldDefinition[] };
 export type Capabilities = { api_version: "v1"; note_types: NoteTypeDefinition[] };
 export type Deck = { id: ApiId; name: string; note_count: number; card_count: number; due_count: number };
+export type Stats = { decks: number; cards: number; due: number; reviews: number };
 export type NoteSummary = { id: ApiId; deck_id: ApiId; note_type: string; preview: string; card_count: number; updated_at_ms: number };
 export type Note = { id: ApiId; deck_id: ApiId; note_type: string; fields: string[]; tags: string[]; created_at_ms: number; updated_at_ms: number };
 export type NoteInput = { note_type: string; fields: string[]; tags: string[] };
-export type CardSummary = { id: ApiId; deck_id: ApiId; front: string; due_at_ms?: number; last_reviewed_at_ms?: number };
+export type CardGeneration = { kind: "template" | "cloze" | "occlusion"; ordinal: number };
+export type CardSummary = { id: ApiId; deck_id: ApiId; front: string; note_id?: ApiId; generation?: CardGeneration; due_at_ms?: number; last_reviewed_at_ms?: number };
+export type ReviewHistory = { rating: 1 | 2 | 3 | 4; reviewed_at_ms: number };
+export type SchedulerState = { stability_days: number | null; difficulty: number | null; due_at_ms: number; last_reviewed_at_ms: number | null };
 export type StudyNext = { card: { id: ApiId; deck_id: ApiId; due_at_ms: number | null } | null };
+export type StudyNextOptions = {
+  newLimit?: number;
+  newSeen?: number;
+  order?: "due" | "reviews-first" | "new-first";
+  shuffleSeed?: number;
+};
 export type StudyPreview = {
   card_id: ApiId;
   review_count: number;
@@ -30,8 +40,13 @@ export type StudyPreview = {
 export type CardDetail = {
   id: ApiId;
   deck_id: ApiId;
+  note_id?: ApiId;
+  note_type?: string;
+  generation?: CardGeneration;
   rendered: { front: string; back: string; css: string };
+  scheduler?: SchedulerState | null;
   review_count: number;
+  reviews?: ReviewHistory[];
 };
 
 export class ApiError extends Error {
@@ -62,6 +77,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
+function studyNextPath(deckId: string, options: StudyNextOptions = {}) {
+  const query = new URLSearchParams();
+  if (options.newLimit !== undefined) query.set("new_limit", String(options.newLimit));
+  if (options.newSeen !== undefined) query.set("new_seen", String(options.newSeen));
+  if (options.order) query.set("order", options.order);
+  if (options.shuffleSeed !== undefined) query.set("shuffle_seed", String(options.shuffleSeed));
+  const suffix = query.size ? `?${query.toString()}` : "";
+  return `/decks/${encodeURIComponent(deckId)}/study/next${suffix}`;
+}
+
 export const appApi = {
   requestMagicLink: (email: string) => request<{ status: "check_email" }>("/auth/magic-link", { method: "POST", body: JSON.stringify({ email }) }),
   consumeMagicLink: (token: string) => request<AuthConsume>("/auth/magic/consume", { method: "POST", body: JSON.stringify({ token }) }),
@@ -70,6 +95,7 @@ export const appApi = {
   logout: () => request<void>("/auth/logout", { method: "POST" }),
   logoutAll: () => request<void>("/auth/logout-all", { method: "POST" }),
   capabilities: () => request<Capabilities>("/capabilities"),
+  stats: (deckId?: string) => request<Stats>(deckId ? `/stats?deck_id=${encodeURIComponent(deckId)}` : "/stats"),
   listDecks: () => request<Deck[]>("/decks"),
   createDeck: (name: string) => request<Deck>("/decks", { method: "POST", body: JSON.stringify({ name }) }),
   getDeck: (id: string) => request<Deck>(`/decks/${encodeURIComponent(id)}`),
@@ -81,8 +107,11 @@ export const appApi = {
   createNote: (deckId: string, input: NoteInput) => request<Note>(`/decks/${encodeURIComponent(deckId)}/notes`, { method: "POST", body: JSON.stringify(input) }),
   updateNote: (noteId: string, input: NoteInput) => request<Note>(`/notes/${encodeURIComponent(noteId)}`, { method: "PATCH", body: JSON.stringify(input) }),
   deleteNote: (noteId: string) => request<void>(`/notes/${encodeURIComponent(noteId)}`, { method: "DELETE" }),
-  nextStudyCard: (deckId: string) => request<StudyNext>(`/decks/${encodeURIComponent(deckId)}/study/next`),
+  nextStudyCard: (deckId: string, options?: StudyNextOptions) => request<StudyNext>(studyNextPath(deckId, options)),
   getCard: (cardId: string) => request<CardDetail>(`/cards/${encodeURIComponent(cardId)}`),
   previewStudy: (cardId: string) => request<StudyPreview>(`/cards/${encodeURIComponent(cardId)}/study/preview`),
-  review: (cardId: string, rating: 1 | 2 | 3 | 4, expectedReviewCount: number) => request<unknown>(`/cards/${encodeURIComponent(cardId)}/reviews`, { method: "POST", body: JSON.stringify({ rating, expected_review_count: expectedReviewCount }) }),
+  review: (cardId: string, rating: 1 | 2 | 3 | 4, expectedReviewCount: number, reviewedAtMs?: number) => request<unknown>(`/cards/${encodeURIComponent(cardId)}/reviews`, {
+    method: "POST",
+    body: JSON.stringify({ rating, expected_review_count: expectedReviewCount, ...(reviewedAtMs === undefined ? {} : { reviewed_at_ms: reviewedAtMs }) }),
+  }),
 };

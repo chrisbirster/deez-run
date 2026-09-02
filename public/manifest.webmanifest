@@ -1,0 +1,10 @@
+{
+  "name": "Deez",
+  "short_name": "Deez",
+  "description": "Terminal-first spaced repetition, available on the web and offline.",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f2e8",
+  "theme_color": "#f5f2e8"
+}
