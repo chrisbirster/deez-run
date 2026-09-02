@@ -36,17 +36,33 @@ jobs:
         run: |
           set -euo pipefail
           docker network create deez-run-ci >/dev/null
-          docker run -d --name deez-run-mongo --network deez-run-ci mongo:8 >/dev/null
+          docker run -d --name deez-run-mongo --network deez-run-ci mongo:8 --replSet rs0 --bind_ip_all >/dev/null
+          trap 'docker logs deez-run-smoke >/dev/null 2>&1 || true; docker logs deez-run-mongo || true; docker rm -f deez-run-smoke deez-run-mongo >/dev/null 2>&1 || true; docker network rm deez-run-ci >/dev/null 2>&1 || true' EXIT
+
+          for _ in $(seq 1 60); do
+            if docker exec deez-run-mongo mongosh --quiet --eval 'db.adminCommand({ping: 1}).ok' 2>/dev/null | grep -q '^1$'; then
+              break
+            fi
+            sleep 1
+          done
+          docker exec deez-run-mongo mongosh --quiet --eval 'rs.initiate({_id: "rs0", members: [{_id: 0, host: "deez-run-mongo:27017"}]})' >/dev/null
+          for _ in $(seq 1 60); do
+            if docker exec deez-run-mongo mongosh --quiet --eval 'db.hello().isWritablePrimary' 2>/dev/null | grep -q '^true$'; then
+              break
+            fi
+            sleep 1
+          done
+          docker exec deez-run-mongo mongosh --quiet --eval 'if (!db.hello().isWritablePrimary) quit(1)'
+
           docker run -d --name deez-run-smoke \
             --network deez-run-ci \
             -e DEEZ_STORAGE=mongodb \
-            -e DEEZ_MONGO_URI='mongodb://deez-run-mongo:27017/deez_ci' \
+            -e DEEZ_MONGO_URI='mongodb://deez-run-mongo:27017/deez_ci?replicaSet=rs0' \
             -e DEEZ_AUTH_BASE_URL='https://deez.run' \
             -e DEEZ_EMAIL_ENDPOINT='https://email-relay.invalid/send-magic-link' \
             -e DEEZ_EMAIL_RELAY_TOKEN='ci-not-used' \
             -p 18080:8080 \
             deez-run:ci
-          trap 'docker logs deez-run-smoke || true; docker rm -f deez-run-smoke deez-run-mongo >/dev/null 2>&1 || true; docker network rm deez-run-ci >/dev/null 2>&1 || true' EXIT
 
           for _ in $(seq 1 45); do
             if curl --fail --silent -D /tmp/health.headers http://127.0.0.1:18080/api/v1/health -o /tmp/health.json; then
