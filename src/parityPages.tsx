@@ -71,6 +71,11 @@ function when(value?: number | null) {
   return new Date(value).toLocaleString();
 }
 
+function generationLabel(card: CardDetail) {
+  const generation = card.generation;
+  return generation ? `${generation.kind}:${generation.ordinal}` : "legacy";
+}
+
 function portableNote(note: Note): PortableNote {
   return { note_type: note.note_type, fields: [...note.fields], tags: [...note.tags] };
 }
@@ -305,7 +310,7 @@ export function CardInspectPage() {
               )}
             </Show>
             <p {...stylex.attrs(s.muted, s.mono)}>
-              note={value().note_id ?? "legacy"} · type={value().note_type ?? "legacy"} · generation={value().generation ? `${value().generation.kind}:${value().generation.ordinal}` : "legacy"}
+              note={value().note_id ?? "legacy"} · type={value().note_type ?? "legacy"} · generation={generationLabel(value())}
             </p>
           </section>
 
