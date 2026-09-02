@@ -1,7 +1,7 @@
-const CACHE_VERSION = "deez-plane-v2";
+const CACHE_VERSION = "deez-plane-v3";
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const MEDIA_CACHE = `${CACHE_VERSION}-media`;
-const SHELL = ["/", "/app", "/manifest.webmanifest"];
+const SHELL = ["/", "/app", "/manifest.webmanifest", "/deez-scheduler.wasm"];
 
 function assetUrls(html) {
   const found = new Set();
@@ -93,7 +93,7 @@ self.addEventListener("fetch", (event) => {
 
   if (url.pathname.startsWith("/api/")) return;
 
-  if (url.pathname.startsWith("/assets/") || url.pathname === "/manifest.webmanifest") {
+  if (url.pathname.startsWith("/assets/") || url.pathname === "/manifest.webmanifest" || url.pathname === "/deez-scheduler.wasm") {
     event.respondWith(staticAsset(request));
   }
 });

@@ -31,11 +31,19 @@ export type StudyNextOptions = {
   order?: "due" | "reviews-first" | "new-first";
   shuffleSeed?: number;
 };
+export type Fsrs7Parameters = {
+  weights: number[];
+  desired_retention: number;
+  minimum_interval_days: number;
+  maximum_interval_days: number;
+};
+export type StudyCandidate = { rating: 1 | 2 | 3 | 4; due_at_ms: number; interval_days: number };
 export type StudyPreview = {
   card_id: ApiId;
   review_count: number;
   retrievability: number | null;
-  schedule: Record<"again" | "hard" | "good" | "easy", { rating: 1 | 2 | 3 | 4; due_at_ms: number; interval_days: number }>;
+  schedule: Record<"again" | "hard" | "good" | "easy", StudyCandidate>;
+  fsrs7_parameters: Fsrs7Parameters;
 };
 export type CardDetail = {
   id: ApiId;

@@ -10,7 +10,7 @@ RUN npm run build
 
 FROM debian:bookworm-slim AS deez-build
 ARG TARGETARCH
-ARG DEEZ_COMMIT=ecd48ae4c6d35c8e2bedff880956b2ccc018fd68
+ARG DEEZ_COMMIT=8eb69930231664fe71d4ffe754022bc260045b9a
 ARG ZIG_VERSION=0.16.0
 
 RUN apt-get update \
@@ -50,6 +50,7 @@ RUN apt-get update \
 WORKDIR /app
 COPY --from=deez-build /src/deez/zig-out/bin/deez /app/deez
 COPY --from=web-build /src/dist /app/web
+COPY --from=deez-build /src/deez/zig-out/bin/deez-scheduler.wasm /app/web/deez-scheduler.wasm
 
 ENV DEEZ_STORAGE=mongodb
 ENV DEEZ_WEB_ROOT=/app/web
