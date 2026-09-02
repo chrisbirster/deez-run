@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
-      DEEZ_CORE_COMMIT: ecd48ae4c6d35c8e2bedff880956b2ccc018fd68
+      DEEZ_CORE_COMMIT: fd1d3c97ec6b90e0e8698555273f3cea8c7db5ae
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -30,8 +30,33 @@ jobs:
         run: docker build --build-arg TARGETARCH=amd64 --build-arg DEEZ_COMMIT="$DEEZ_CORE_COMMIT" -t deez-run:ci .
       - name: Verify production runtime contains only Deez server requirements
         run: |
-          docker run --rm --entrypoint /bin/sh deez-run:ci -c 'test -x /app/deez && test -f /app/web/index.html && ! command -v node && ! command -v npm && ! command -v zig && ! command -v python3'
-      - name: Smoke-test Zig API, hosted auth boundary, and SPA serving
+          docker run --rm --entrypoint /bin/sh deez-run:ci -c 'test -x /app/deez && test -f /app/web/index.html && test -f /app/web/deez-scheduler.wasm && ! command -v node && ! command -v npm && ! command -v zig && ! command -v python3'
+      - name: Execute compiled Zig scheduler WebAssembly
+        shell: bash
+        run: |
+          set -euo pipefail
+          container="$(docker create deez-run:ci)"
+          trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
+          docker cp "$container:/app/web/deez-scheduler.wasm" /tmp/deez-scheduler.wasm
+          node <<'JS'
+          const fs = require('node:fs');
+          (async () => {
+            const { instance } = await WebAssembly.instantiate(fs.readFileSync('/tmp/deez-scheduler.wasm'), {});
+            const e = instance.exports;
+            for (const name of ['deez_reset','deez_validate_parameters','deez_append_review','deez_schedule','deez_due_at_ms','deez_interval_days']) {
+              if (typeof e[name] !== 'function') throw new Error(`missing wasm export ${name}`);
+            }
+            e.deez_reset();
+            if (e.deez_validate_parameters() !== 0) throw new Error('default FSRS parameters rejected');
+            if (e.deez_schedule(1000n) !== 0) throw new Error('initial schedule failed');
+            const firstDue = e.deez_due_at_ms(1);
+            if (firstDue <= 1000n) throw new Error('Again did not schedule into the future');
+            if (e.deez_append_review(1, 1000n) !== 0) throw new Error('review append failed');
+            if (e.deez_schedule(firstDue) !== 0) throw new Error('second offline schedule failed');
+            if (!Number.isFinite(e.deez_interval_days(3))) throw new Error('Good interval is not finite');
+          })().catch((error) => { console.error(error); process.exit(1); });
+          JS
+      - name: Smoke-test Zig API, hosted auth boundary, PWA, and SPA serving
         shell: bash
         run: |
           set -euo pipefail
@@ -87,3 +112,8 @@ jobs:
           grep -q 'id="root"' /tmp/spa-fallback.html
           grep -qi '^content-security-policy: .*script-src '\''self'\''' /tmp/spa.headers
           grep -qi '^referrer-policy: no-referrer' /tmp/spa.headers
+
+          curl --fail --silent http://127.0.0.1:18080/deez-scheduler.wasm -o /tmp/served-scheduler.wasm
+          magic="$(od -An -tx1 -N4 /tmp/served-scheduler.wasm | tr -d ' \n')"
+          test "$magic" = '0061736d'
+          curl --fail --silent http://127.0.0.1:18080/sw.js | grep -q 'deez-scheduler.wasm'
