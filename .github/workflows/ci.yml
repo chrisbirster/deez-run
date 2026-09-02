@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
-      DEEZ_CORE_COMMIT: 36fc2f12bb2584fb019413748f0ee84ca14dbe45
+      DEEZ_CORE_COMMIT: ecd48ae4c6d35c8e2bedff880956b2ccc018fd68
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
