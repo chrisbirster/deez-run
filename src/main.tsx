@@ -1,6 +1,6 @@
 import { render } from "@solidjs/web";
 import App from "./App";
-import { flushOfflineReviews } from "./offline";
+import { replicateNow, startReplication } from "./localReplication";
 import "./reset.css";
 
 const root = document.getElementById("root");
@@ -10,14 +10,11 @@ render(() => <App />, root);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    void navigator.serviceWorker.register("/sw.js").catch((reason) => console.warn("Deez offline worker failed to register", reason));
+    void navigator.serviceWorker.register("/sw.js").catch((reason) => console.warn("Deez service worker failed to register", reason));
   });
 }
 
-async function flushReviews() {
-  try { await flushOfflineReviews(); }
-  catch (reason) { console.warn("Deez offline review sync will retry later", reason); }
-}
-
-if (navigator.onLine) void flushReviews();
-window.addEventListener("online", () => void flushReviews());
+void startReplication().catch((reason) => console.warn("Initial Deez replication will retry later", reason));
+window.addEventListener("online", () => {
+  void replicateNow().catch((reason) => console.warn("Deez replication will retry later", reason));
+});
