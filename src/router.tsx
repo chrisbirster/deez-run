@@ -8,7 +8,6 @@ import {
   NoteEditorPage,
   OnboardingPage,
   SettingsPage,
-  StudyPage,
 } from "./appPages";
 import { OfflineLibraryPage, OfflineStudyPage } from "./offlinePages";
 import { CardInspectPage, DeckCardsPage, ToolsPage } from "./parityPages";
@@ -22,6 +21,7 @@ import {
   PublishPage,
   SearchPage,
 } from "./pages";
+import { HostedStudyPage } from "./studyPage";
 
 export const Router = createRouter({
   routes: [
@@ -40,7 +40,7 @@ export const Router = createRouter({
     { path: "/app/decks/:deckId", component: MyDeckPage },
     { path: "/app/decks/:deckId/notes/new", component: NoteEditorPage },
     { path: "/app/decks/:deckId/notes/:noteId", component: NoteEditorPage },
-    { path: "/app/decks/:deckId/study", component: StudyPage },
+    { path: "/app/decks/:deckId/study", component: HostedStudyPage },
     { path: "/app/decks/:deckId/cards", component: DeckCardsPage },
     { path: "/app/cards/:cardId", component: CardInspectPage },
     { path: "/app/offline", component: OfflineLibraryPage },
