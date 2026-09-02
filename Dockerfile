@@ -50,6 +50,7 @@ RUN apt-get update \
 WORKDIR /app
 COPY --from=deez-build /src/deez/zig-out/bin/deez /app/deez
 COPY --from=web-build /src/dist /app/web
+COPY --from=deez-build /src/deez/zig-out/bin/deez-scheduler.wasm /app/web/deez-scheduler.wasm
 
 ENV DEEZ_STORAGE=mongodb
 ENV DEEZ_WEB_ROOT=/app/web
