@@ -9,7 +9,7 @@ import {
   OnboardingPage,
   SettingsPage,
 } from "./appPages";
-import { OfflineLibraryPage, OfflineStudyPage } from "./offlinePages";
+import { LocalFirstStatusPage } from "./localFirstPages";
 import { CardInspectPage, DeckCardsPage, ToolsPage } from "./parityPages";
 import {
   AuthorPage,
@@ -43,8 +43,8 @@ export const Router = createRouter({
     { path: "/app/decks/:deckId/study", component: HostedStudyPage },
     { path: "/app/decks/:deckId/cards", component: DeckCardsPage },
     { path: "/app/cards/:cardId", component: CardInspectPage },
-    { path: "/app/offline", component: OfflineLibraryPage },
-    { path: "/app/offline/:deckId", component: OfflineStudyPage },
+    { path: "/app/offline", component: LocalFirstStatusPage },
+    { path: "/app/offline/:deckId", component: LocalFirstStatusPage },
     { path: "/app/tools", component: ToolsPage },
     { path: "/app/settings", component: SettingsPage },
     { path: "*404", component: NotFoundPage },
