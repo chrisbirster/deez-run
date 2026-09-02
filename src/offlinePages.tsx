@@ -3,6 +3,7 @@ import { useParams } from "@solidjs/router";
 import * as stylex from "@stylexjs/stylex";
 import { appApi, type Deck } from "./appApi";
 import {
+  discardQueuedReview,
   flushOfflineReviews,
   listOfflineDecks,
   nextOfflineCard,
@@ -11,6 +12,7 @@ import {
   queueOfflineReview,
   queuedReviews,
   type OfflineDeck,
+  type QueuedReview,
 } from "./offline";
 import { appStyles as s } from "./appStyles.stylex";
 import { styles } from "./siteStyles";
@@ -26,6 +28,7 @@ function OfflineShell(props: { children: unknown }) {
       <nav {...stylex.attrs(s.actions)} aria-label="Offline Deez">
         <a {...stylex.attrs(styles.button, styles.buttonSecondary)} href="/app">My Deez</a>
         <a {...stylex.attrs(styles.button, styles.buttonSecondary)} href="/app/offline">Offline</a>
+        <a {...stylex.attrs(styles.button, styles.buttonSecondary)} href="/app/tools">Tools</a>
       </nav>
       {props.children as never}
     </div>
@@ -36,19 +39,27 @@ export function OfflineLibraryPage() {
   const [onlineDecks, setOnlineDecks] = createSignal<Deck[]>([]);
   const [cached, setCached] = createSignal<OfflineDeck[]>([]);
   const [pending, setPending] = createSignal(0);
+  const [conflicts, setConflicts] = createSignal<QueuedReview[]>([]);
   const [progress, setProgress] = createSignal<string>();
   const [error, setError] = createSignal<string>();
   const [busyId, setBusyId] = createSignal<string>();
+
+  async function refreshQueueState() {
+    const queue = await queuedReviews();
+    setPending(queue.length);
+    setConflicts(queue.filter((item) => item.state === "conflict"));
+  }
 
   async function load() {
     try {
       const local = await listOfflineDecks();
       setCached(local);
-      setPending((await queuedReviews()).length);
+      await refreshQueueState();
       if (navigator.onLine) {
         try {
           await flushOfflineReviews();
-          setPending((await queuedReviews()).length);
+          await refreshQueueState();
+          setCached(await listOfflineDecks());
           setOnlineDecks(await appApi.listDecks());
         } catch (reason) {
           setError(message(reason));
@@ -76,6 +87,21 @@ export function OfflineLibraryPage() {
     }
   }
 
+  async function useServerHistory(item: QueuedReview) {
+    if (!window.confirm("Discard this one conflicting offline rating and refresh the card from deez.run?")) return;
+    setBusyId(item.id);
+    setError(undefined);
+    try {
+      await discardQueuedReview(item.id);
+      await refreshQueueState();
+      setCached(await listOfflineDecks());
+    } catch (reason) {
+      setError(message(reason));
+    } finally {
+      setBusyId(undefined);
+    }
+  }
+
   const cachedIds = () => new Set(cached().map((deck) => deck.id));
 
   return (
@@ -91,7 +117,15 @@ export function OfflineLibraryPage() {
 
       <Show when={error()}>{(value) => <div {...stylex.attrs(s.error)}>{value()}</div>}</Show>
       <Show when={progress()}>{(value) => <div {...stylex.attrs(s.success)}>{value()}</div>}</Show>
-      <Show when={pending() > 0}><div {...stylex.attrs(s.panel)}><strong>{pending()} review{pending() === 1 ? "" : "s"} waiting to sync.</strong><p {...stylex.attrs(s.muted)}>They keep their original review time and replay automatically when connectivity returns.</p></div></Show>
+      <Show when={pending() > 0}><div {...stylex.attrs(s.panel)}><strong>{pending()} review{pending() === 1 ? "" : "s"} waiting to sync.</strong><p {...stylex.attrs(s.muted)}>They keep their original review time and replay automatically when connectivity returns. A card with a durable outbox entry is never offered twice.</p></div></Show>
+
+      <Show when={conflicts().length > 0}>
+        <section {...stylex.attrs(s.error)}>
+          <h2>{conflicts().length} review conflict{conflicts().length === 1 ? "" : "s"} need your choice</h2>
+          <p>The server history changed independently, so Deez will not silently overwrite either side.</p>
+          <div {...stylex.attrs(s.list)}><For each={conflicts()}>{(item) => <div {...stylex.attrs(s.listItem)}><p><strong>Card {item.cardId}</strong> · offline rating {item.rating} · {new Date(item.reviewedAtMs).toLocaleString()}</p><p {...stylex.attrs(s.muted)}>{item.conflict}</p><button {...stylex.attrs(styles.button, styles.buttonSecondary)} disabled={!navigator.onLine || busyId() === item.id} onClick={() => void useServerHistory(item)}>{busyId() === item.id ? "Resolving…" : "Use server history"}</button></div>}</For></div>
+        </section>
+      </Show>
 
       <section {...stylex.attrs(s.panel)}>
         <h2>Ready on this device</h2>
@@ -115,7 +149,7 @@ export function OfflineLibraryPage() {
 
       <section {...stylex.attrs(s.panel)}>
         <h2>Before boarding</h2>
-        <p {...stylex.attrs(s.muted)}>Open this page once after downloading your decks, then use your browser’s “Add to Home Screen” option. Deez caches the application shell, deck cards, study previews, and referenced media on this device.</p>
+        <p {...stylex.attrs(s.muted)}>Download each deck you need and wait for “ready offline.” The service worker does not finish installing until the app shell and its hashed JavaScript/CSS assets are cached. Then use your browser’s “Add to Home Screen” option if you want an app-like launcher.</p>
       </section>
     </OfflineShell>
   );
@@ -131,6 +165,7 @@ export function OfflineStudyPage() {
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal<string>();
   const [pending, setPending] = createSignal(0);
+  const [conflictCount, setConflictCount] = createSignal(0);
 
   async function next() {
     setRevealed(false);
@@ -142,7 +177,9 @@ export function OfflineStudyPage() {
         return;
       }
       setDeck(local);
-      setPending((await queuedReviews()).filter((item) => item.deckId === deckId()).length);
+      const queue = (await queuedReviews()).filter((item) => item.deckId === deckId());
+      setPending(queue.length);
+      setConflictCount(queue.filter((item) => item.state === "conflict").length);
       const card = await nextOfflineCard(deckId());
       setCurrent(card);
       setDone(!card);
@@ -172,8 +209,9 @@ export function OfflineStudyPage() {
 
   return (
     <OfflineShell>
-      <div {...stylex.attrs(s.topRow)}><div><a href="/app/offline">← Offline decks</a><h1 {...stylex.attrs(s.appHeading)}>{deck()?.deck.name ?? "Offline study"}</h1><p {...stylex.attrs(s.muted)}>{navigator.onLine ? "Connected" : "Plane mode"} · {pending()} queued review{pending() === 1 ? "" : "s"}</p></div></div>
+      <div {...stylex.attrs(s.topRow)}><div><a href="/app/offline">← Offline decks</a><h1 {...stylex.attrs(s.appHeading)}>{deck()?.deck.name ?? "Offline study"}</h1><p {...stylex.attrs(s.muted)}>{navigator.onLine ? "Connected" : "Plane mode"} · {pending()} queued review{pending() === 1 ? "" : "s"}{conflictCount() ? ` · ${conflictCount()} conflict${conflictCount() === 1 ? "" : "s"}` : ""}</p></div></div>
       <Show when={error()}>{(value) => <div {...stylex.attrs(s.error)}>{value()}</div>}</Show>
+      <Show when={conflictCount() > 0}><div {...stylex.attrs(s.error)}>A synced history conflict needs attention. Your offline rating is still preserved. <a href="/app/offline">Resolve it in Offline Deez.</a></div></Show>
       <Show when={done()} fallback={
         <Show when={current()}>{(card) => <>
           <section {...stylex.attrs(s.studyCard)}>
@@ -183,7 +221,7 @@ export function OfflineStudyPage() {
           <Show when={revealed()}><div {...stylex.attrs(s.ratingGrid)}><For each={labels}>{([rating, key, label]) => <button {...stylex.attrs(styles.button, styles.buttonSecondary)} disabled={busy()} onClick={() => void rate(rating)}><span>{label}</span>&nbsp;<small>{card().preview.schedule[key].interval_days.toFixed(1)}d</small></button>}</For></div></Show>
         </>}</Show>
       }>
-        <div {...stylex.attrs(s.panel)}><h2>Offline queue complete.</h2><p {...stylex.attrs(s.muted)}>There are no more currently-due cached cards that are safe to rate before synchronization. Reviews already made offline remain on this device until they reach deez.run.</p><a {...stylex.attrs(styles.button)} href="/app/offline">Offline library</a></div>
+        <div {...stylex.attrs(s.panel)}><h2>Offline queue complete.</h2><p {...stylex.attrs(s.muted)}>There are no more currently-due cached cards that are safe to rate before synchronization. Reviews already made offline remain in the durable outbox until they reach deez.run.</p><a {...stylex.attrs(styles.button)} href="/app/offline">Offline library</a></div>
       </Show>
     </OfflineShell>
   );
