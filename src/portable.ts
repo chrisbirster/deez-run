@@ -10,6 +10,12 @@ export type PortableDeck = {
   source: "nut-v1" | "nut-v2" | "json-v1" | "json-v2";
 };
 
+export type PortableImportAdapter<TDeck extends { id: string }> = {
+  createDeck(name: string): Promise<TDeck>;
+  createNote(deckId: string, note: PortableNote): Promise<unknown>;
+  deleteDeck(deckId: string): Promise<unknown>;
+};
+
 type JsonObject = Record<string, unknown>;
 
 function asObject(value: unknown, context: string): JsonObject {
@@ -127,6 +133,21 @@ export function parsePortableDeck(source: string, filename = "") {
     return parseNut(source);
   }
   return parseDeckJson(source);
+}
+
+export async function importPortableDeck<TDeck extends { id: string }>(
+  parsed: PortableDeck,
+  adapter: PortableImportAdapter<TDeck>,
+): Promise<TDeck> {
+  let created: TDeck | undefined;
+  try {
+    created = await adapter.createDeck(parsed.name);
+    for (const note of parsed.notes) await adapter.createNote(created.id, note);
+    return created;
+  } catch (reason) {
+    if (created) await adapter.deleteDeck(created.id).catch(() => undefined);
+    throw reason;
+  }
 }
 
 export function serializeNutV2(name: string, notes: readonly PortableNote[]) {
