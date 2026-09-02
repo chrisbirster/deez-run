@@ -17,17 +17,17 @@ import {
 } from "./remoteApi";
 import { localDb, localId, type LocalCard, type LocalDeck, type LocalNote, type OutboxItem, type OutboxKind } from "./localDb";
 import { replicateNow } from "./localReplication";
+import { scheduleHistory } from "./wasmScheduler";
 
 let primed = false;
 let primePromise: Promise<void> | undefined;
 
-function outbox(kind: OutboxKind, entityId: string, payload: Record<string, unknown> = {}): OutboxItem {
-  const now = Date.now();
+function outbox(kind: OutboxKind, entityId: string, payload: Record<string, unknown> = {}, createdAtMs = Date.now()): OutboxItem {
   return {
-    id: `${kind}:${entityId}:${now}:${crypto.randomUUID()}`,
+    id: `${kind}:${entityId}:${createdAtMs}:${crypto.randomUUID()}`,
     kind,
     entity_id: entityId,
-    created_at_ms: now,
+    created_at_ms: createdAtMs,
     payload,
   };
 }
@@ -171,7 +171,7 @@ export const appApi = {
     return {
       decks: decks.length,
       cards: cards.length,
-      due: cards.filter((card) => !card.pending_review && card.due_at_ms <= now).length,
+      due: cards.filter((card) => card.due_at_ms <= now).length,
       reviews: cards.reduce((sum, card) => sum + card.detail.review_count, 0),
     };
   },
@@ -297,7 +297,7 @@ export const appApi = {
     const newSeen = options.newSeen ?? 0;
     const newLimit = options.newLimit;
     const due = (await findCards(deckId)).filter((card) => {
-      if (card.pending_review || card.due_at_ms > now) return false;
+      if (card.due_at_ms > now) return false;
       const isNew = card.summary.due_at_ms == null;
       return !isNew || newLimit === undefined || newSeen < newLimit;
     });
@@ -316,17 +316,30 @@ export const appApi = {
     await prime();
     const card = await localDb.card(cardId);
     if (!card) throw new Error("Card not found");
-    return { ...card.preview, card_id: card.id };
+    const calculated = await scheduleHistory(card.preview.fsrs7_parameters, card.detail.reviews ?? [], Date.now());
+    return {
+      ...card.preview,
+      card_id: card.id,
+      review_count: card.detail.review_count,
+      schedule: calculated.schedule,
+    };
   },
 
   async review(cardId: string, rating: 1 | 2 | 3 | 4, expectedReviewCount: number, reviewedAtMs = Date.now()) {
     await prime();
     const card = await localDb.card(cardId);
     if (!card) throw new Error("Card not found");
-    if (card.pending_review) throw new Error("This card already has a local review waiting to sync.");
+    if (card.detail.review_count !== expectedReviewCount) throw new Error("Local review history changed; refresh this card before rating it again.");
+
+    const existingReviews = card.detail.reviews ?? [];
+    if (existingReviews.length && reviewedAtMs <= existingReviews[existingReviews.length - 1].reviewed_at_ms) {
+      reviewedAtMs = existingReviews[existingReviews.length - 1].reviewed_at_ms + 1;
+    }
+    const before = await scheduleHistory(card.preview.fsrs7_parameters, existingReviews, reviewedAtMs);
     const key = ({ 1: "again", 2: "hard", 3: "good", 4: "easy" } as const)[rating];
-    const candidate = card.preview.schedule[key];
-    const reviews = [...(card.detail.reviews ?? []), { rating, reviewed_at_ms: reviewedAtMs }];
+    const candidate = before.schedule[key];
+    const reviews = [...existingReviews, { rating, reviewed_at_ms: reviewedAtMs }];
+    const after = await scheduleHistory(card.preview.fsrs7_parameters, reviews, reviewedAtMs);
     const updated: LocalCard = {
       ...card,
       summary: { ...card.summary, due_at_ms: candidate.due_at_ms, last_reviewed_at_ms: reviewedAtMs },
@@ -334,8 +347,14 @@ export const appApi = {
         ...card.detail,
         review_count: expectedReviewCount + 1,
         reviews,
-        scheduler: card.detail.scheduler ? { ...card.detail.scheduler, due_at_ms: candidate.due_at_ms, last_reviewed_at_ms: reviewedAtMs } : card.detail.scheduler,
+        scheduler: {
+          stability_days: after.stability_days,
+          difficulty: after.difficulty,
+          due_at_ms: candidate.due_at_ms,
+          last_reviewed_at_ms: reviewedAtMs,
+        },
       },
+      preview: { ...card.preview, review_count: expectedReviewCount + 1, schedule: after.schedule },
       due_at_ms: candidate.due_at_ms,
       pending_review: true,
     };
@@ -344,7 +363,7 @@ export const appApi = {
       rating,
       expected_review_count: expectedReviewCount,
       reviewed_at_ms: reviewedAtMs,
-    }));
+    }, reviewedAtMs));
     void kickReplication();
     return undefined;
   },
