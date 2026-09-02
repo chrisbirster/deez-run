@@ -1,10 +1,33 @@
-const CACHE_VERSION = "deez-plane-v1";
+const CACHE_VERSION = "deez-plane-v2";
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const MEDIA_CACHE = `${CACHE_VERSION}-media`;
 const SHELL = ["/", "/app", "/manifest.webmanifest"];
 
+function assetUrls(html) {
+  const found = new Set();
+  for (const match of html.matchAll(/(?:src|href)=["'](\/assets\/[^"']+)["']/g)) found.add(match[1]);
+  return [...found];
+}
+
+async function primeShell() {
+  const cache = await caches.open(SHELL_CACHE);
+  let appHtml = "";
+  for (const url of SHELL) {
+    const response = await fetch(url, { credentials: "same-origin", cache: "no-store" });
+    if (!response.ok) throw new Error(`Unable to cache ${url}: ${response.status}`);
+    if (url === "/app") appHtml = await response.clone().text();
+    await cache.put(url, response);
+  }
+  const assets = assetUrls(appHtml);
+  await Promise.all(assets.map(async (url) => {
+    const response = await fetch(url, { credentials: "same-origin", cache: "no-store" });
+    if (!response.ok) throw new Error(`Unable to cache ${url}: ${response.status}`);
+    await cache.put(url, response);
+  }));
+}
+
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil(primeShell().then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (event) => {
