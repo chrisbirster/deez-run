@@ -16,12 +16,14 @@ export type FieldDefinition = { ordinal: number; name: string };
 export type NoteTypeDefinition = { id: ApiId; slug: string; name: string; fields: FieldDefinition[] };
 export type Capabilities = { api_version: "v1"; note_types: NoteTypeDefinition[] };
 export type Deck = { id: ApiId; name: string; note_count: number; card_count: number; due_count: number };
+export type Stats = { decks: number; cards: number; due: number; reviews: number };
 export type NoteSummary = { id: ApiId; deck_id: ApiId; note_type: string; preview: string; card_count: number; updated_at_ms: number };
 export type Note = { id: ApiId; deck_id: ApiId; note_type: string; fields: string[]; tags: string[]; created_at_ms: number; updated_at_ms: number };
 export type NoteInput = { note_type: string; fields: string[]; tags: string[] };
 export type CardGeneration = { kind: "template" | "cloze" | "occlusion"; ordinal: number };
 export type CardSummary = { id: ApiId; deck_id: ApiId; front: string; note_id?: ApiId; generation?: CardGeneration; due_at_ms?: number; last_reviewed_at_ms?: number };
 export type ReviewHistory = { rating: 1 | 2 | 3 | 4; reviewed_at_ms: number };
+export type SchedulerState = { stability_days: number | null; difficulty: number | null; due_at_ms: number; last_reviewed_at_ms: number | null };
 export type StudyNext = { card: { id: ApiId; deck_id: ApiId; due_at_ms: number | null } | null };
 export type StudyPreview = {
   card_id: ApiId;
@@ -36,6 +38,7 @@ export type CardDetail = {
   note_type?: string;
   generation?: CardGeneration;
   rendered: { front: string; back: string; css: string };
+  scheduler?: SchedulerState | null;
   review_count: number;
   reviews?: ReviewHistory[];
 };
@@ -76,6 +79,7 @@ export const appApi = {
   logout: () => request<void>("/auth/logout", { method: "POST" }),
   logoutAll: () => request<void>("/auth/logout-all", { method: "POST" }),
   capabilities: () => request<Capabilities>("/capabilities"),
+  stats: (deckId?: string) => request<Stats>(deckId ? `/stats?deck_id=${encodeURIComponent(deckId)}` : "/stats"),
   listDecks: () => request<Deck[]>("/decks"),
   createDeck: (name: string) => request<Deck>("/decks", { method: "POST", body: JSON.stringify({ name }) }),
   getDeck: (id: string) => request<Deck>(`/decks/${encodeURIComponent(id)}`),
