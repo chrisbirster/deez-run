@@ -19,7 +19,9 @@ export type Deck = { id: ApiId; name: string; note_count: number; card_count: nu
 export type NoteSummary = { id: ApiId; deck_id: ApiId; note_type: string; preview: string; card_count: number; updated_at_ms: number };
 export type Note = { id: ApiId; deck_id: ApiId; note_type: string; fields: string[]; tags: string[]; created_at_ms: number; updated_at_ms: number };
 export type NoteInput = { note_type: string; fields: string[]; tags: string[] };
-export type CardSummary = { id: ApiId; deck_id: ApiId; front: string; due_at_ms?: number; last_reviewed_at_ms?: number };
+export type CardGeneration = { kind: "template" | "cloze" | "occlusion"; ordinal: number };
+export type CardSummary = { id: ApiId; deck_id: ApiId; front: string; note_id?: ApiId; generation?: CardGeneration; due_at_ms?: number; last_reviewed_at_ms?: number };
+export type ReviewHistory = { rating: 1 | 2 | 3 | 4; reviewed_at_ms: number };
 export type StudyNext = { card: { id: ApiId; deck_id: ApiId; due_at_ms: number | null } | null };
 export type StudyPreview = {
   card_id: ApiId;
@@ -30,8 +32,12 @@ export type StudyPreview = {
 export type CardDetail = {
   id: ApiId;
   deck_id: ApiId;
+  note_id?: ApiId;
+  note_type?: string;
+  generation?: CardGeneration;
   rendered: { front: string; back: string; css: string };
   review_count: number;
+  reviews?: ReviewHistory[];
 };
 
 export class ApiError extends Error {
@@ -84,5 +90,8 @@ export const appApi = {
   nextStudyCard: (deckId: string) => request<StudyNext>(`/decks/${encodeURIComponent(deckId)}/study/next`),
   getCard: (cardId: string) => request<CardDetail>(`/cards/${encodeURIComponent(cardId)}`),
   previewStudy: (cardId: string) => request<StudyPreview>(`/cards/${encodeURIComponent(cardId)}/study/preview`),
-  review: (cardId: string, rating: 1 | 2 | 3 | 4, expectedReviewCount: number) => request<unknown>(`/cards/${encodeURIComponent(cardId)}/reviews`, { method: "POST", body: JSON.stringify({ rating, expected_review_count: expectedReviewCount }) }),
+  review: (cardId: string, rating: 1 | 2 | 3 | 4, expectedReviewCount: number, reviewedAtMs?: number) => request<unknown>(`/cards/${encodeURIComponent(cardId)}/reviews`, {
+    method: "POST",
+    body: JSON.stringify({ rating, expected_review_count: expectedReviewCount, ...(reviewedAtMs === undefined ? {} : { reviewed_at_ms: reviewedAtMs }) }),
+  }),
 };
