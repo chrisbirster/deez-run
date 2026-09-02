@@ -10,6 +10,7 @@ import {
   SettingsPage,
   StudyPage,
 } from "./appPages";
+import { OfflineLibraryPage, OfflineStudyPage } from "./offlinePages";
 import {
   AuthorPage,
   DocsPage,
@@ -39,6 +40,8 @@ export const Router = createRouter({
     { path: "/app/decks/:deckId/notes/new", component: NoteEditorPage },
     { path: "/app/decks/:deckId/notes/:noteId", component: NoteEditorPage },
     { path: "/app/decks/:deckId/study", component: StudyPage },
+    { path: "/app/offline", component: OfflineLibraryPage },
+    { path: "/app/offline/:deckId", component: OfflineStudyPage },
     { path: "/app/settings", component: SettingsPage },
     { path: "*404", component: NotFoundPage },
   ],
