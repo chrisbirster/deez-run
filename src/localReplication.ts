@@ -9,7 +9,7 @@ export type ReplicationStatus = {
   account_id?: string;
 };
 
-const CREATE_NOTE_BATCH_SIZE = 200;
+const CREATE_NOTE_BATCH_SIZE = 25;
 let active: Promise<ReplicationStatus> | undefined;
 
 function sameNote(local: LocalNote, remote: Note) {
@@ -147,7 +147,6 @@ async function flushCreateNoteBatch(items: OutboxItem[]) {
   if (!pending.length || !localDeckId) return;
   const deckRemoteId = await remoteDeckId(localDeckId);
   if (!deckRemoteId) {
-    // Preserve old behavior if the parent deck has not reached the server yet.
     await flushCreateNote(pending[0].item);
     return;
   }
@@ -261,6 +260,44 @@ function orderedOutbox(items: OutboxItem[]) {
     }
     return left.created_at_ms - right.created_at_ms || left.id.localeCompare(right.id);
   });
+}
+
+async function reconcileOrphanDecks() {
+  const [localDecks, localNotes, localCards, pending, remoteDecks] = await Promise.all([
+    localDb.decks(),
+    localDb.notes(),
+    localDb.cards(),
+    localDb.outbox(),
+    remoteApi.listDecks(),
+  ]);
+  const createDeckPending = new Set(pending.filter((item) => item.kind === "create_deck").map((item) => item.entity_id));
+
+  for (const local of localDecks) {
+    if (local.deleted || local.remote_id || createDeckPending.has(local.id)) continue;
+    const notes = localNotes.filter((note) => note.deck_id === local.id && !note.deleted);
+    const queuedNotes = pending.filter((item) => item.kind === "create_note" && notes.some((note) => note.id === item.entity_id));
+    if (!notes.length || !queuedNotes.length) continue;
+
+    const candidates = remoteDecks.filter((remote) => remote.name === local.name && remote.note_count === 0 && remote.card_count === 0);
+    if (candidates.length !== 1) continue;
+    const remote = candidates[0];
+
+    const mirror = localDecks.find((deck) => deck.id !== local.id && (deck.remote_id === remote.id || deck.id === remote.id));
+    if (mirror) {
+      const mirrorHasNotes = localNotes.some((note) => note.deck_id === mirror.id && !note.deleted);
+      const mirrorHasCards = localCards.some((card) => card.deck_id === mirror.id);
+      const mirrorHasPending = pending.some((item) => item.entity_id === mirror.id);
+      if (mirrorHasNotes || mirrorHasCards || mirrorHasPending) continue;
+      await localDb.deleteDeckRecord(mirror.id);
+    }
+
+    await localDb.putDeck({
+      ...local,
+      remote_id: remote.id,
+      base_remote_name: remote.name,
+      dirty: false,
+    });
+  }
 }
 
 async function flushOutbox() {
@@ -377,9 +414,6 @@ async function pullSnapshot() {
     for (const summary of remoteCards) {
       const existing = byRemoteCard.get(summary.id);
       seenRemoteCards.add(summary.id);
-      // Never overwrite a local card while it still has a queued review or a
-      // replication conflict. Its immutable local history remains the source
-      // we must either replay or explicitly resolve.
       if (existing && dirtyEntities.has(existing.id)) continue;
       const [detail, preview] = await Promise.all([remoteApi.getCard(summary.id), remoteApi.previewStudy(summary.id)]);
       const localNoteId = detail.note_id ? noteByRemote.get(detail.note_id)?.id : undefined;
@@ -430,6 +464,7 @@ async function runReplication(): Promise<ReplicationStatus> {
   if (!navigator.onLine) return replicationStatus();
   const user = await remoteApi.me();
   const account = await ensureAccount(user);
+  await reconcileOrphanDecks();
   await flushOutbox();
   await pullSnapshot();
   const now = Date.now();
