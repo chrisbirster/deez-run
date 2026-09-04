@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "slug": "movies-v4",
+  "name": "Movies v4",
+  "description": "Open-licensed Movies trivia, volume 4. Generated from the OpenTriviaQA archive and capped at 500 logical notes per Deez nut.",
+  "authors": [
+    {
+      "github": "uberspot",
+      "name": "OpenTriviaQA contributors"
+    },
+    {
+      "github": "chrisbirster",
+      "name": "Chris Birster"
+    }
+  ],
+  "tags": [
+    "trivia",
+    "open-trivia-qa",
+    "movies",
+    "pop-culture"
+  ],
+  "license": "CC-BY-SA-4.0",
+  "source": {
+    "type": "github",
+    "repository": "chrisbirster/deez-nuts"
+  },
+  "versions": [
+    {
+      "version": "1.0.0",
+      "commit": "17c68f4b375f2f8df22bdf091c97b7e2afd5a73e",
+      "path": "nuts/movies-v4/movies-v4.nut",
+      "sha256": "32510d29415db7b66d7a32357b94b7a064f713343ac06f22a77489387b1e4075"
+    }
+  ]
+}

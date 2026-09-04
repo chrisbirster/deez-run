@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "slug": "literature-v1",
+  "name": "Literature v1",
+  "description": "Open-licensed Literature trivia, volume 1. Generated from the OpenTriviaQA archive and capped at 500 logical notes per Deez nut.",
+  "authors": [
+    {
+      "github": "uberspot",
+      "name": "OpenTriviaQA contributors"
+    },
+    {
+      "github": "chrisbirster",
+      "name": "Chris Birster"
+    }
+  ],
+  "tags": [
+    "trivia",
+    "open-trivia-qa",
+    "literature"
+  ],
+  "license": "CC-BY-SA-4.0",
+  "source": {
+    "type": "github",
+    "repository": "chrisbirster/deez-nuts"
+  },
+  "versions": [
+    {
+      "version": "1.0.0",
+      "commit": "17c68f4b375f2f8df22bdf091c97b7e2afd5a73e",
+      "path": "nuts/literature-v1/literature-v1.nut",
+      "sha256": "80f9ab0207bb23f18e3044f2b4d7777a8ebd6bb5a69dba18b9540f8912da116b"
+    }
+  ]
+}

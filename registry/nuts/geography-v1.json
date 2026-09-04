@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "slug": "geography-v1",
+  "name": "Geography v1",
+  "description": "Open-licensed Geography trivia, volume 1. Generated from the OpenTriviaQA archive and capped at 500 logical notes per Deez nut.",
+  "authors": [
+    {
+      "github": "uberspot",
+      "name": "OpenTriviaQA contributors"
+    },
+    {
+      "github": "chrisbirster",
+      "name": "Chris Birster"
+    }
+  ],
+  "tags": [
+    "trivia",
+    "open-trivia-qa",
+    "geography"
+  ],
+  "license": "CC-BY-SA-4.0",
+  "source": {
+    "type": "github",
+    "repository": "chrisbirster/deez-nuts"
+  },
+  "versions": [
+    {
+      "version": "1.0.0",
+      "commit": "17c68f4b375f2f8df22bdf091c97b7e2afd5a73e",
+      "path": "nuts/geography-v1/geography-v1.nut",
+      "sha256": "7e390b4059b603e7bf3fe59852386d6c154c6332c0d23667722c1ef16de1fa29"
+    }
+  ]
+}

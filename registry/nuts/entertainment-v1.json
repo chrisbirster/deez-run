@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "slug": "entertainment-v1",
+  "name": "Entertainment v1",
+  "description": "Open-licensed Entertainment trivia, volume 1. Generated from the OpenTriviaQA archive and capped at 500 logical notes per Deez nut.",
+  "authors": [
+    {
+      "github": "uberspot",
+      "name": "OpenTriviaQA contributors"
+    },
+    {
+      "github": "chrisbirster",
+      "name": "Chris Birster"
+    }
+  ],
+  "tags": [
+    "trivia",
+    "open-trivia-qa",
+    "entertainment",
+    "pop-culture"
+  ],
+  "license": "CC-BY-SA-4.0",
+  "source": {
+    "type": "github",
+    "repository": "chrisbirster/deez-nuts"
+  },
+  "versions": [
+    {
+      "version": "1.0.0",
+      "commit": "17c68f4b375f2f8df22bdf091c97b7e2afd5a73e",
+      "path": "nuts/entertainment-v1/entertainment-v1.nut",
+      "sha256": "eb7c878decf499c76154dfaf4285710d4734955913e101f9372356ff9a473a5a"
+    }
+  ]
+}

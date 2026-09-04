@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "slug": "science-technology-v2",
+  "name": "Science & Technology v2",
+  "description": "Open-licensed Science Technology trivia, volume 2. Generated from the OpenTriviaQA archive and capped at 500 logical notes per Deez nut.",
+  "authors": [
+    {
+      "github": "uberspot",
+      "name": "OpenTriviaQA contributors"
+    },
+    {
+      "github": "chrisbirster",
+      "name": "Chris Birster"
+    }
+  ],
+  "tags": [
+    "trivia",
+    "open-trivia-qa",
+    "science",
+    "technology"
+  ],
+  "license": "CC-BY-SA-4.0",
+  "source": {
+    "type": "github",
+    "repository": "chrisbirster/deez-nuts"
+  },
+  "versions": [
+    {
+      "version": "1.0.0",
+      "commit": "17c68f4b375f2f8df22bdf091c97b7e2afd5a73e",
+      "path": "nuts/science-technology-v2/science-technology-v2.nut",
+      "sha256": "7d61215a80ea4fedadfe0942e15fadcb8ce8e96e3bbc45a1cd1bbf098d4eba25"
+    }
+  ]
+}

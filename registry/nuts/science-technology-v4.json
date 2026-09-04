@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "slug": "science-technology-v4",
+  "name": "Science & Technology v4",
+  "description": "Open-licensed Science Technology trivia, volume 4. Generated from the OpenTriviaQA archive and capped at 500 logical notes per Deez nut.",
+  "authors": [
+    {
+      "github": "uberspot",
+      "name": "OpenTriviaQA contributors"
+    },
+    {
+      "github": "chrisbirster",
+      "name": "Chris Birster"
+    }
+  ],
+  "tags": [
+    "trivia",
+    "open-trivia-qa",
+    "science",
+    "technology"
+  ],
+  "license": "CC-BY-SA-4.0",
+  "source": {
+    "type": "github",
+    "repository": "chrisbirster/deez-nuts"
+  },
+  "versions": [
+    {
+      "version": "1.0.0",
+      "commit": "17c68f4b375f2f8df22bdf091c97b7e2afd5a73e",
+      "path": "nuts/science-technology-v4/science-technology-v4.nut",
+      "sha256": "9f4566629a0a8c5f8b6a1b410444a49757ed67f4469f9868b7683476a33c106c"
+    }
+  ]
+}

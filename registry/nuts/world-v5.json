@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "slug": "world-v5",
+  "name": "World v5",
+  "description": "Open-licensed World trivia, volume 5. Generated from the OpenTriviaQA archive and capped at 500 logical notes per Deez nut.",
+  "authors": [
+    {
+      "github": "uberspot",
+      "name": "OpenTriviaQA contributors"
+    },
+    {
+      "github": "chrisbirster",
+      "name": "Chris Birster"
+    }
+  ],
+  "tags": [
+    "trivia",
+    "open-trivia-qa",
+    "world",
+    "general-knowledge"
+  ],
+  "license": "CC-BY-SA-4.0",
+  "source": {
+    "type": "github",
+    "repository": "chrisbirster/deez-nuts"
+  },
+  "versions": [
+    {
+      "version": "1.0.0",
+      "commit": "17c68f4b375f2f8df22bdf091c97b7e2afd5a73e",
+      "path": "nuts/world-v5/world-v5.nut",
+      "sha256": "61f4e8c494b259a24287ba3703c5c6afdc67942b3c504e0e51ff5f2369254438"
+    }
+  ]
+}
