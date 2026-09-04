@@ -1,0 +1,26 @@
+diff --git a/src/hosted_web.zig b/src/hosted_web.zig
+--- a/src/hosted_web.zig
++++ b/src/hosted_web.zig
+@@ -67,9 +67,21 @@ const Handler = struct {
+             try jsonError(res, 413, "request_too_large", "Deez Web API JSON bodies are limited to 1 MiB");
+             return;
+         }
++
++        // Public read-only routes do not touch the store and must remain
++        // available even if a storage-backed request is blocked. In
++        // particular, Fly health checks and SPA/static asset requests should
++        // never queue behind MongoDB work held under the store mutex.
++        const bypass_store_lock = req.method == .GET and (
++            !std.mem.startsWith(u8, req.url.path, "/api/") or
++            std.mem.eql(u8, req.url.path, "/api/v1/health") or
++            std.mem.eql(u8, req.url.path, "/api/v1/version") or
++            std.mem.eql(u8, req.url.path, "/api/v1/capabilities")
++        );
++        if (bypass_store_lock) {
++            try action(self, req, res);
++            return;
++        }
++
+         self.store_mutex.lockUncancelable(self.io);
+         defer self.store_mutex.unlock(self.io);
+         try action(self, req, res);
