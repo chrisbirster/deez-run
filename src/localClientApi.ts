@@ -36,14 +36,15 @@ async function prime() {
   if (primed) return;
   if (!primePromise) {
     primePromise = (async () => {
+      const local = await localDb.decks();
+      if (local.length) {
+        primed = true;
+        if (navigator.onLine) void kickReplication();
+        return;
+      }
+
       if (navigator.onLine) {
-        try {
-          await replicateNow();
-        } catch (reason) {
-          if (reason instanceof ApiError && reason.status === 401) throw reason;
-          const local = await localDb.decks();
-          if (!local.length) throw reason;
-        }
+        await replicateNow();
       }
       primed = true;
     })().finally(() => { primePromise = undefined; });
