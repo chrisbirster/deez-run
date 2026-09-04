@@ -1,0 +1,60 @@
+name: production diagnostics
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/diagnose-now
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check Fly hostname and custom domain
+        shell: bash
+        run: |
+          set -u
+          check() {
+            local url="$1"
+            echo "===== ${url} ====="
+            rm -f /tmp/headers /tmp/body
+            if curl -L --connect-timeout 5 --max-time 20 -sS \
+              -D /tmp/headers -o /tmp/body \
+              -w 'http=%{http_code} dns=%{time_namelookup}s connect=%{time_connect}s tls=%{time_appconnect}s ttfb=%{time_starttransfer}s total=%{time_total}s bytes=%{size_download}\n' \
+              "$url"; then
+              sed -n '1,30p' /tmp/headers
+              echo "body-bytes=$(wc -c < /tmp/body)"
+              head -c 300 /tmp/body || true
+              echo
+            else
+              status=$?
+              echo "curl-exit=${status}"
+              test -f /tmp/headers && sed -n '1,30p' /tmp/headers || true
+            fi
+          }
+
+          check https://deez-run.fly.dev/
+          check https://deez-run.fly.dev/nuts
+          check https://deez.run/
+          check https://deez.run/nuts
+
+          echo '===== main browser asset ====='
+          rm -f /tmp/index /tmp/asset
+          if curl -L --connect-timeout 5 --max-time 20 -fsS https://deez.run/ -o /tmp/index; then
+            asset=$(grep -oE '/assets/index-[^"[:space:]]+\.js' /tmp/index | head -n1 || true)
+            echo "asset=${asset}"
+            if [ -n "$asset" ]; then
+              curl -L --connect-timeout 5 --max-time 30 -sS \
+                -D /tmp/asset-headers -o /tmp/asset \
+                -w 'http=%{http_code} dns=%{time_namelookup}s connect=%{time_connect}s tls=%{time_appconnect}s ttfb=%{time_starttransfer}s total=%{time_total}s bytes=%{size_download}\n' \
+                "https://deez.run${asset}" || true
+              sed -n '1,30p' /tmp/asset-headers || true
+              test -f /tmp/asset && echo "asset-bytes=$(wc -c < /tmp/asset)" || true
+            fi
+          fi
