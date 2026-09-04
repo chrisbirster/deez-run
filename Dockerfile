@@ -36,11 +36,14 @@ RUN set -eux; \
     rm /tmp/zig.tar.xz
 
 ENV PATH="/opt/zig:${PATH}"
+COPY patches/patch-hosted-web.py /tmp/patch-hosted-web.py
 WORKDIR /src/deez
 RUN git clone https://github.com/chrisbirster/deez.git . \
     && git checkout --detach "${DEEZ_COMMIT}" \
-    && test "$(git rev-parse HEAD)" = "${DEEZ_COMMIT}"
-RUN zig build -Doptimize=ReleaseSafe
+    && test "$(git rev-parse HEAD)" = "${DEEZ_COMMIT}" \
+    && python3 /tmp/patch-hosted-web.py src/hosted_web.zig
+RUN zig fmt src/hosted_web.zig \
+    && zig build -Doptimize=ReleaseSafe
 
 FROM debian:bookworm-slim AS runtime
 RUN apt-get update \
