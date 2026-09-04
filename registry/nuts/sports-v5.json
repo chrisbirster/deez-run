@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "slug": "sports-v5",
+  "name": "Sports v5",
+  "description": "Open-licensed Sports trivia, volume 5. Generated from the OpenTriviaQA archive and capped at 500 logical notes per Deez nut.",
+  "authors": [
+    {
+      "github": "uberspot",
+      "name": "OpenTriviaQA contributors"
+    },
+    {
+      "github": "chrisbirster",
+      "name": "Chris Birster"
+    }
+  ],
+  "tags": [
+    "trivia",
+    "open-trivia-qa",
+    "sports"
+  ],
+  "license": "CC-BY-SA-4.0",
+  "source": {
+    "type": "github",
+    "repository": "chrisbirster/deez-nuts"
+  },
+  "versions": [
+    {
+      "version": "1.0.0",
+      "commit": "17c68f4b375f2f8df22bdf091c97b7e2afd5a73e",
+      "path": "nuts/sports-v5/sports-v5.nut",
+      "sha256": "774c2ee6b5742a340602f18be018e003ff290f3376a1b334ae341c3b4c2c9b60"
+    }
+  ]
+}

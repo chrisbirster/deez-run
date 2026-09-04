@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "slug": "general-v3",
+  "name": "General Knowledge v3",
+  "description": "Open-licensed General trivia, volume 3. Generated from the OpenTriviaQA archive and capped at 500 logical notes per Deez nut.",
+  "authors": [
+    {
+      "github": "uberspot",
+      "name": "OpenTriviaQA contributors"
+    },
+    {
+      "github": "chrisbirster",
+      "name": "Chris Birster"
+    }
+  ],
+  "tags": [
+    "trivia",
+    "open-trivia-qa",
+    "general-knowledge"
+  ],
+  "license": "CC-BY-SA-4.0",
+  "source": {
+    "type": "github",
+    "repository": "chrisbirster/deez-nuts"
+  },
+  "versions": [
+    {
+      "version": "1.0.0",
+      "commit": "17c68f4b375f2f8df22bdf091c97b7e2afd5a73e",
+      "path": "nuts/general-v3/general-v3.nut",
+      "sha256": "5788b4604e288d943e14d3518a4abdbd65c2c5876c418b7400c083743133b8c7"
+    }
+  ]
+}

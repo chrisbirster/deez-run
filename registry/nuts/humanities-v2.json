@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "slug": "humanities-v2",
+  "name": "Humanities v2",
+  "description": "Open-licensed Humanities trivia, volume 2. Generated from the OpenTriviaQA archive and capped at 500 logical notes per Deez nut.",
+  "authors": [
+    {
+      "github": "uberspot",
+      "name": "OpenTriviaQA contributors"
+    },
+    {
+      "github": "chrisbirster",
+      "name": "Chris Birster"
+    }
+  ],
+  "tags": [
+    "trivia",
+    "open-trivia-qa",
+    "humanities"
+  ],
+  "license": "CC-BY-SA-4.0",
+  "source": {
+    "type": "github",
+    "repository": "chrisbirster/deez-nuts"
+  },
+  "versions": [
+    {
+      "version": "1.0.0",
+      "commit": "17c68f4b375f2f8df22bdf091c97b7e2afd5a73e",
+      "path": "nuts/humanities-v2/humanities-v2.nut",
+      "sha256": "d25ec6ad4e55cd40f4f655a433e21a3ff44263687d38b0957dc9256dd8d35f3e"
+    }
+  ]
+}

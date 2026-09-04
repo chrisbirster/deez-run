@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "slug": "history-v3",
+  "name": "History v3",
+  "description": "Open-licensed History trivia, volume 3. Generated from the OpenTriviaQA archive and capped at 500 logical notes per Deez nut.",
+  "authors": [
+    {
+      "github": "uberspot",
+      "name": "OpenTriviaQA contributors"
+    },
+    {
+      "github": "chrisbirster",
+      "name": "Chris Birster"
+    }
+  ],
+  "tags": [
+    "trivia",
+    "open-trivia-qa",
+    "history"
+  ],
+  "license": "CC-BY-SA-4.0",
+  "source": {
+    "type": "github",
+    "repository": "chrisbirster/deez-nuts"
+  },
+  "versions": [
+    {
+      "version": "1.0.0",
+      "commit": "17c68f4b375f2f8df22bdf091c97b7e2afd5a73e",
+      "path": "nuts/history-v3/history-v3.nut",
+      "sha256": "4c9b844dd053bc9b16f091145498858cb5baf9879f662b26d2675dd12462c2d7"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "slug": "people-v4",
+  "name": "People v4",
+  "description": "Open-licensed People trivia, volume 4. Generated from the OpenTriviaQA archive and capped at 500 logical notes per Deez nut.",
+  "authors": [
+    {
+      "github": "uberspot",
+      "name": "OpenTriviaQA contributors"
+    },
+    {
+      "github": "chrisbirster",
+      "name": "Chris Birster"
+    }
+  ],
+  "tags": [
+    "trivia",
+    "open-trivia-qa",
+    "people"
+  ],
+  "license": "CC-BY-SA-4.0",
+  "source": {
+    "type": "github",
+    "repository": "chrisbirster/deez-nuts"
+  },
+  "versions": [
+    {
+      "version": "1.0.0",
+      "commit": "17c68f4b375f2f8df22bdf091c97b7e2afd5a73e",
+      "path": "nuts/people-v4/people-v4.nut",
+      "sha256": "5260c90e622a3521e9ed70ba3d75ad333d8194223f621743de997a8c84ef127b"
+    }
+  ]
+}

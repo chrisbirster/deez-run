@@ -1,0 +1,43 @@
+name: Sync open trivia registry
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/sync-open-trivia-registry.mjs"
+      - ".github/workflows/sync-open-trivia-registry.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Generate trivia registry entries
+        run: node scripts/sync-open-trivia-registry.mjs
+
+      - name: Validate source bytes and generate public catalog
+        run: node scripts/build-registry.mjs
+
+      - name: Commit registry and generated catalog
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add registry/nuts registry/open-trivia-qa-generated.json src/generated/catalog.json public/sitemap.xml
+          if git diff --cached --quiet; then
+            echo "Open trivia registry is already current."
+            exit 0
+          fi
+          git commit -m "catalog: publish open trivia nuts"
+          git push

@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "slug": "celebrities-v3",
+  "name": "Celebrities v3",
+  "description": "Open-licensed Celebrities trivia, volume 3. Generated from the OpenTriviaQA archive and capped at 500 logical notes per Deez nut.",
+  "authors": [
+    {
+      "github": "uberspot",
+      "name": "OpenTriviaQA contributors"
+    },
+    {
+      "github": "chrisbirster",
+      "name": "Chris Birster"
+    }
+  ],
+  "tags": [
+    "trivia",
+    "open-trivia-qa",
+    "celebrities",
+    "pop-culture"
+  ],
+  "license": "CC-BY-SA-4.0",
+  "source": {
+    "type": "github",
+    "repository": "chrisbirster/deez-nuts"
+  },
+  "versions": [
+    {
+      "version": "1.0.0",
+      "commit": "17c68f4b375f2f8df22bdf091c97b7e2afd5a73e",
+      "path": "nuts/celebrities-v3/celebrities-v3.nut",
+      "sha256": "edc7b9d016dfff0de9355616a80c2aa5bbba30a36b5966f22bd8f5688859af84"
+    }
+  ]
+}

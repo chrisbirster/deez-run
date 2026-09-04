@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "slug": "hobbies-v1",
+  "name": "Hobbies v1",
+  "description": "Open-licensed Hobbies trivia, volume 1. Generated from the OpenTriviaQA archive and capped at 500 logical notes per Deez nut.",
+  "authors": [
+    {
+      "github": "uberspot",
+      "name": "OpenTriviaQA contributors"
+    },
+    {
+      "github": "chrisbirster",
+      "name": "Chris Birster"
+    }
+  ],
+  "tags": [
+    "trivia",
+    "open-trivia-qa",
+    "hobbies"
+  ],
+  "license": "CC-BY-SA-4.0",
+  "source": {
+    "type": "github",
+    "repository": "chrisbirster/deez-nuts"
+  },
+  "versions": [
+    {
+      "version": "1.0.0",
+      "commit": "17c68f4b375f2f8df22bdf091c97b7e2afd5a73e",
+      "path": "nuts/hobbies-v1/hobbies-v1.nut",
+      "sha256": "9657d52e9653a7f06db072ddd25771b008416f9eead34f13d194272c3946aa4e"
+    }
+  ]
+}

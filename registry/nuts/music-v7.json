@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "slug": "music-v7",
+  "name": "Music v7",
+  "description": "Open-licensed Music trivia, volume 7. Generated from the OpenTriviaQA archive and capped at 500 logical notes per Deez nut.",
+  "authors": [
+    {
+      "github": "uberspot",
+      "name": "OpenTriviaQA contributors"
+    },
+    {
+      "github": "chrisbirster",
+      "name": "Chris Birster"
+    }
+  ],
+  "tags": [
+    "trivia",
+    "open-trivia-qa",
+    "music",
+    "pop-culture"
+  ],
+  "license": "CC-BY-SA-4.0",
+  "source": {
+    "type": "github",
+    "repository": "chrisbirster/deez-nuts"
+  },
+  "versions": [
+    {
+      "version": "1.0.0",
+      "commit": "17c68f4b375f2f8df22bdf091c97b7e2afd5a73e",
+      "path": "nuts/music-v7/music-v7.nut",
+      "sha256": "6222cff1a91735e601692d859c09f5cb363fe2c23edd16f71a55973cdc80bff0"
+    }
+  ]
+}

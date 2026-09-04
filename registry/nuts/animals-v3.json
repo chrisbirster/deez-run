@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "slug": "animals-v3",
+  "name": "Animals v3",
+  "description": "Open-licensed Animals trivia, volume 3. Generated from the OpenTriviaQA archive and capped at 500 logical notes per Deez nut.",
+  "authors": [
+    {
+      "github": "uberspot",
+      "name": "OpenTriviaQA contributors"
+    },
+    {
+      "github": "chrisbirster",
+      "name": "Chris Birster"
+    }
+  ],
+  "tags": [
+    "trivia",
+    "open-trivia-qa",
+    "animals"
+  ],
+  "license": "CC-BY-SA-4.0",
+  "source": {
+    "type": "github",
+    "repository": "chrisbirster/deez-nuts"
+  },
+  "versions": [
+    {
+      "version": "1.0.0",
+      "commit": "17c68f4b375f2f8df22bdf091c97b7e2afd5a73e",
+      "path": "nuts/animals-v3/animals-v3.nut",
+      "sha256": "7a76a980d05c9204ff2046b4404a7a5249ce2c4db67e69576fd7238cf2009955"
+    }
+  ]
+}

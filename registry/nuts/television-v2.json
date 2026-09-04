@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "slug": "television-v2",
+  "name": "Television v2",
+  "description": "Open-licensed Television trivia, volume 2. Generated from the OpenTriviaQA archive and capped at 500 logical notes per Deez nut.",
+  "authors": [
+    {
+      "github": "uberspot",
+      "name": "OpenTriviaQA contributors"
+    },
+    {
+      "github": "chrisbirster",
+      "name": "Chris Birster"
+    }
+  ],
+  "tags": [
+    "trivia",
+    "open-trivia-qa",
+    "television",
+    "pop-culture"
+  ],
+  "license": "CC-BY-SA-4.0",
+  "source": {
+    "type": "github",
+    "repository": "chrisbirster/deez-nuts"
+  },
+  "versions": [
+    {
+      "version": "1.0.0",
+      "commit": "17c68f4b375f2f8df22bdf091c97b7e2afd5a73e",
+      "path": "nuts/television-v2/television-v2.nut",
+      "sha256": "e120d115692ff4cf387d6436656b7d62ce11aadb9e7e9c6c0fd88f0c890bdd60"
+    }
+  ]
+}
