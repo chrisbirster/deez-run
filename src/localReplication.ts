@@ -9,6 +9,7 @@ export type ReplicationStatus = {
   account_id?: string;
 };
 
+const CREATE_NOTE_BATCH_SIZE = 200;
 let active: Promise<ReplicationStatus> | undefined;
 
 function sameNote(local: LocalNote, remote: Note) {
@@ -124,6 +125,58 @@ async function flushCreateNote(item: OutboxItem) {
   await localDb.deleteOutbox(item.id);
 }
 
+async function flushCreateNoteBatch(items: OutboxItem[]) {
+  const pending: Array<{ item: OutboxItem; note: LocalNote }> = [];
+  let localDeckId: string | undefined;
+
+  for (const item of items) {
+    const note = await localDb.note(item.entity_id);
+    if (!note || note.deleted) {
+      await localDb.deleteOutbox(item.id);
+      continue;
+    }
+    if (note.remote_id) {
+      await localDb.deleteOutbox(item.id);
+      continue;
+    }
+    if (localDeckId === undefined) localDeckId = note.deck_id;
+    if (note.deck_id !== localDeckId) break;
+    pending.push({ item, note });
+  }
+
+  if (!pending.length || !localDeckId) return;
+  const deckRemoteId = await remoteDeckId(localDeckId);
+  if (!deckRemoteId) {
+    // Preserve old behavior if the parent deck has not reached the server yet.
+    await flushCreateNote(pending[0].item);
+    return;
+  }
+
+  const result = await remoteApi.createNotesBulk(deckRemoteId, pending.map(({ note }) => ({
+    note_type: note.note_type,
+    fields: note.fields,
+    tags: note.tags,
+  })));
+  if (result.notes.length !== pending.length) {
+    throw new Error(`Bulk note sync returned ${result.notes.length} notes for ${pending.length} local notes.`);
+  }
+
+  for (let index = 0; index < pending.length; index += 1) {
+    const { item, note } = pending[index];
+    const remote = result.notes[index];
+    await localDb.putNote({
+      ...note,
+      remote_id: remote.id,
+      remote_deck_id: remote.deck_id,
+      created_at_ms: remote.created_at_ms,
+      updated_at_ms: remote.updated_at_ms,
+      base_remote_updated_at_ms: remote.updated_at_ms,
+      dirty: false,
+    });
+    await localDb.deleteOutbox(item.id);
+  }
+}
+
 async function flushUpdateNote(item: OutboxItem) {
   const note = await localDb.note(item.entity_id);
   if (!note || note.deleted) {
@@ -212,18 +265,47 @@ function orderedOutbox(items: OutboxItem[]) {
 
 async function flushOutbox() {
   const items = orderedOutbox(await localDb.outbox());
-  for (const item of items) {
-    if (item.conflict) continue;
+  let index = 0;
+  while (index < items.length) {
+    const item = items[index];
+    if (item.conflict) {
+      index += 1;
+      continue;
+    }
     if (!navigator.onLine) break;
+
+    if (item.kind === "create_note") {
+      const first = await localDb.note(item.entity_id);
+      if (!first || first.deleted || first.remote_id) {
+        await flushCreateNote(item);
+        index += 1;
+        continue;
+      }
+
+      const batch: OutboxItem[] = [];
+      let cursor = index;
+      while (cursor < items.length && batch.length < CREATE_NOTE_BATCH_SIZE) {
+        const candidate = items[cursor];
+        if (candidate.conflict || candidate.kind !== "create_note") break;
+        const note = await localDb.note(candidate.entity_id);
+        if (!note || note.deck_id !== first.deck_id) break;
+        batch.push(candidate);
+        cursor += 1;
+      }
+      await flushCreateNoteBatch(batch);
+      index = Math.max(cursor, index + 1);
+      continue;
+    }
+
     switch (item.kind) {
       case "create_deck": await flushCreateDeck(item); break;
       case "rename_deck": await flushRenameDeck(item); break;
       case "delete_deck": await flushDeleteDeck(item); break;
-      case "create_note": await flushCreateNote(item); break;
       case "update_note": await flushUpdateNote(item); break;
       case "delete_note": await flushDeleteNote(item); break;
       case "review": await flushReview(item); break;
     }
+    index += 1;
   }
 }
 
