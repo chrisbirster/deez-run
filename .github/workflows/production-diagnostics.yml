@@ -14,8 +14,26 @@ permissions:
 jobs:
   diagnose:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
+    environment: production
     steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Inspect Fly machine
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          set +e
+          echo '===== fly status ====='
+          flyctl status -a deez-run
+          echo '===== fly checks ====='
+          flyctl checks list -a deez-run
+          echo '===== fly machine status ====='
+          flyctl machine status 28624e2a125218 -a deez-run
+          echo '===== recent fly logs ====='
+          timeout 15s flyctl logs -a deez-run --no-tail || true
+
       - name: Check Fly hostname and custom domain
         shell: bash
         run: |
@@ -39,8 +57,9 @@ jobs:
             fi
           }
 
+          check https://deez-run.fly.dev/api/v1/health
           check https://deez-run.fly.dev/
-          check https://deez-run.fly.dev/nuts
+          check https://deez.run/api/v1/health
           check https://deez.run/
           check https://deez.run/nuts
 
