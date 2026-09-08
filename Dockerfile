@@ -10,7 +10,7 @@ RUN npm run build
 
 FROM debian:bookworm-slim AS deez-build
 ARG TARGETARCH
-ARG DEEZ_COMMIT=f00f5ec92b5fd2918b9310fcbfbe9bacadb5d2c7
+ARG DEEZ_COMMIT=d2291a61aa6f4fee86381d7221a064259efd5ef9
 ARG ZIG_VERSION=0.16.0
 
 RUN apt-get update \
