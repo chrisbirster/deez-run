@@ -63,6 +63,27 @@ jobs:
           check https://deez.run/
           check https://deez.run/nuts
 
+          echo '===== unauthenticated auth/me ====='
+          curl --connect-timeout 5 --max-time 10 -sS \
+            -D /tmp/auth-me-headers -o /tmp/auth-me-body \
+            -w 'http=%{http_code} ttfb=%{time_starttransfer}s total=%{time_total}s bytes=%{size_download}\n' \
+            https://deez.run/api/v1/auth/me || true
+          sed -n '1,20p' /tmp/auth-me-headers || true
+          head -c 300 /tmp/auth-me-body || true
+          echo
+
+          echo '===== invalid magic-link consume ====='
+          curl --connect-timeout 5 --max-time 10 -sS \
+            -H 'Content-Type: application/json' \
+            -X POST \
+            -d '{"token":"invalid"}' \
+            -D /tmp/auth-consume-headers -o /tmp/auth-consume-body \
+            -w 'http=%{http_code} ttfb=%{time_starttransfer}s total=%{time_total}s bytes=%{size_download}\n' \
+            https://deez.run/api/v1/auth/magic/consume || true
+          sed -n '1,20p' /tmp/auth-consume-headers || true
+          head -c 300 /tmp/auth-consume-body || true
+          echo
+
           echo '===== main browser asset ====='
           rm -f /tmp/index /tmp/asset
           if curl -L --connect-timeout 5 --max-time 20 -fsS https://deez.run/ -o /tmp/index; then
