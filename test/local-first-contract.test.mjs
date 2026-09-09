@@ -45,9 +45,10 @@ test("Study always performs a document navigation for its route-scoped CSP", () 
   assert.match(main, /addEventListener\("click", forceStudyDocumentNavigation, \{ capture: true \}\)/);
 });
 
-test("service worker never promotes a Study response to the generic app shell", () => {
+test("service worker keeps Study policy out of the generic offline app shell", () => {
   assert.match(serviceWorker, /const CACHE_VERSION = "deez-plane-v4"/);
-  assert.match(serviceWorker, /function isStudyPath/);
-  assert.match(serviceWorker, /study \? url\.pathname : "\/app"/);
-  assert.match(serviceWorker, /if \(study\) return \(await caches\.match\(url\.pathname\)\) \|\| Response\.error\(\)/);
+  assert.match(serviceWorker, /const STUDY_SHELL = "\/app\/decks\/__deez-study-shell__\/study"/);
+  assert.match(serviceWorker, /if \(response\.ok && !study\)/);
+  assert.match(serviceWorker, /cache\.put\("\/app", response\.clone\(\)\)/);
+  assert.match(serviceWorker, /if \(study\) return \(await caches\.match\(STUDY_SHELL\)\) \|\| Response\.error\(\)/);
 });
