@@ -1,4 +1,4 @@
-const CACHE_VERSION = "deez-plane-v3";
+const CACHE_VERSION = "deez-plane-v4";
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const MEDIA_CACHE = `${CACHE_VERSION}-media`;
 const SHELL = ["/", "/app", "/manifest.webmanifest", "/deez-scheduler.wasm"];
@@ -7,6 +7,10 @@ function assetUrls(html) {
   const found = new Set();
   for (const match of html.matchAll(/(?:src|href)=["'](\/assets\/[^"']+)["']/g)) found.add(match[1]);
   return [...found];
+}
+
+function isStudyPath(pathname) {
+  return /^\/app\/decks\/[^/]+\/study$/.test(pathname);
 }
 
 async function primeShell() {
@@ -39,14 +43,19 @@ self.addEventListener("activate", (event) => {
 });
 
 async function navigation(request) {
+  const url = new URL(request.url);
+  const study = isStudyPath(url.pathname);
   try {
     const response = await fetch(request);
     if (response.ok) {
       const cache = await caches.open(SHELL_CACHE);
-      await cache.put("/app", response.clone());
+      // Study carries a deliberately narrower CSP for scheduler WASM. Never
+      // let that response replace the generic /app shell used by other routes.
+      await cache.put(study ? url.pathname : "/app", response.clone());
     }
     return response;
   } catch {
+    if (study) return (await caches.match(url.pathname)) || Response.error();
     return (await caches.match("/app")) || (await caches.match("/")) || Response.error();
   }
 }
