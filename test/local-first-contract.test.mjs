@@ -7,6 +7,7 @@ const client = fs.readFileSync(new URL("../src/localClientApi.ts", import.meta.u
 const replication = fs.readFileSync(new URL("../src/localReplication.ts", import.meta.url), "utf8");
 const router = fs.readFileSync(new URL("../src/router.tsx", import.meta.url), "utf8");
 const main = fs.readFileSync(new URL("../src/main.tsx", import.meta.url), "utf8");
+const serviceWorker = fs.readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
 
 test("local mutations pair entity writes with the durable outbox", () => {
   assert.match(localDb, /putDeckWithOutbox/);
@@ -42,4 +43,11 @@ test("Study always performs a document navigation for its route-scoped CSP", () 
   assert.match(main, /\/app\\\/decks\\\/\[\^\/\]\+\\\/study/);
   assert.match(main, /window\.location\.assign\(url\.href\)/);
   assert.match(main, /addEventListener\("click", forceStudyDocumentNavigation, \{ capture: true \}\)/);
+});
+
+test("service worker never promotes a Study response to the generic app shell", () => {
+  assert.match(serviceWorker, /const CACHE_VERSION = "deez-plane-v4"/);
+  assert.match(serviceWorker, /function isStudyPath/);
+  assert.match(serviceWorker, /study \? url\.pathname : "\/app"/);
+  assert.match(serviceWorker, /if \(study\) return \(await caches\.match\(url\.pathname\)\) \|\| Response\.error\(\)/);
 });
