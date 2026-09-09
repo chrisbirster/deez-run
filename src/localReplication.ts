@@ -89,6 +89,25 @@ async function flushDeleteDeck(item: OutboxItem) {
     await localDb.deleteOutbox(item.id);
     return;
   }
+
+  // Never let a queued deck deletion destroy an imported deck while one of its
+  // notes is preserved as a sync conflict. This is especially important for
+  // the portable importer's legacy rollback path: once bulk sync isolates a
+  // malformed note, keep the deck recoverable instead of racing ahead to the
+  // previously queued delete.
+  const deckNotes = (await localDb.notes()).filter((note) => note.deck_id === deck.id);
+  const noteIds = new Set(deckNotes.map((note) => note.id));
+  const unresolvedNoteConflict = (await localDb.outbox()).some((queued) => (
+    queued.id !== item.id
+    && queued.kind === "create_note"
+    && Boolean(queued.conflict)
+    && noteIds.has(queued.entity_id)
+  ));
+  if (unresolvedNoteConflict) {
+    await markConflict(item, "Deck deletion paused because this deck still has unsynced note conflicts. Resolve or export the deck before deleting it.");
+    return;
+  }
+
   if (!deck.remote_id) {
     await localDb.deleteDeckRecord(deck.id);
     await localDb.deleteOutbox(item.id);
@@ -104,9 +123,8 @@ async function flushDeleteDeck(item: OutboxItem) {
   } catch (reason) {
     if (!(reason instanceof ApiError && reason.status === 404)) throw reason;
   }
-  const notes = (await localDb.notes()).filter((note) => note.deck_id === deck.id);
   const cards = (await localDb.cards()).filter((card) => card.deck_id === deck.id);
-  for (const note of notes) await localDb.deleteNoteRecord(note.id);
+  for (const note of deckNotes) await localDb.deleteNoteRecord(note.id);
   for (const card of cards) await localDb.deleteCardRecord(card.id);
   await localDb.deleteDeckRecord(deck.id);
   await localDb.deleteOutbox(item.id);
