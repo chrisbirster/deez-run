@@ -36,3 +36,10 @@ test("replication starts on boot and reconnect", () => {
   assert.match(main, /addEventListener\("online"/);
   assert.match(main, /replicateNow/);
 });
+
+test("Study always performs a document navigation for its route-scoped CSP", () => {
+  assert.match(main, /forceStudyDocumentNavigation/);
+  assert.match(main, /\/app\\\/decks\\\/\[\^\/\]\+\\\/study/);
+  assert.match(main, /window\.location\.assign\(url\.href\)/);
+  assert.match(main, /addEventListener\("click", forceStudyDocumentNavigation, \{ capture: true \}\)/);
+});
