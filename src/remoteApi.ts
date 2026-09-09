@@ -67,16 +67,28 @@ export class ApiError extends Error {
 
 type ErrorBody = { error?: { code?: string; message?: string } };
 
+const REQUEST_TIMEOUT_MS = 20_000;
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api/v1${path}`, {
-    credentials: "same-origin",
-    ...init,
-    headers: {
-      Accept: "application/json",
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...init?.headers,
-    },
-  });
+  const signal = init?.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(`/api/v1${path}`, {
+      credentials: "same-origin",
+      ...init,
+      signal,
+      headers: {
+        Accept: "application/json",
+        ...(init?.body ? { "Content-Type": "application/json" } : {}),
+        ...init?.headers,
+      },
+    });
+  } catch (error) {
+    if (error instanceof DOMException && (error.name === "TimeoutError" || error.name === "AbortError")) {
+      throw new ApiError("Request timed out. Please try again.", 408, "request_timeout");
+    }
+    throw error;
+  }
   if (!response.ok) {
     let body: ErrorBody | undefined;
     try { body = (await response.json()) as ErrorBody; } catch { /* non-JSON fallback */ }
