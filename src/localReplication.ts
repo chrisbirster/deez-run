@@ -10,12 +10,28 @@ export type ReplicationStatus = {
 };
 
 const CREATE_NOTE_BATCH_SIZE = 25;
+const SNAPSHOT_FETCH_CONCURRENCY = 12;
 let active: Promise<ReplicationStatus> | undefined;
 
 function sameNote(local: LocalNote, remote: Note) {
   return local.note_type === remote.note_type
     && JSON.stringify(local.fields) === JSON.stringify(remote.fields)
     && JSON.stringify(local.tags) === JSON.stringify(remote.tags);
+}
+
+async function mapConcurrent<T, R>(items: readonly T[], concurrency: number, worker: (item: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  const count = Math.min(Math.max(1, concurrency), items.length);
+  await Promise.all(Array.from({ length: count }, async () => {
+    while (true) {
+      const index = next;
+      next += 1;
+      if (index >= items.length) return;
+      results[index] = await worker(items[index]);
+    }
+  }));
+  return results;
 }
 
 async function markConflict(item: OutboxItem, text: string) {
@@ -151,11 +167,33 @@ async function flushCreateNoteBatch(items: OutboxItem[]) {
     return;
   }
 
-  const result = await remoteApi.createNotesBulk(deckRemoteId, pending.map(({ note }) => ({
-    note_type: note.note_type,
-    fields: note.fields,
-    tags: note.tags,
-  })));
+  let result;
+  try {
+    result = await remoteApi.createNotesBulk(deckRemoteId, pending.map(({ note }) => ({
+      note_type: note.note_type,
+      fields: note.fields,
+      tags: note.tags,
+    })));
+  } catch (reason) {
+    if (!(reason instanceof ApiError && reason.status === 400)) throw reason;
+
+    // A single invalid imported note must not block every valid note behind it.
+    // Retry this batch item-by-item so valid notes can sync and the rejected
+    // note remains durable as a visible conflict for the user to repair.
+    for (const { item } of pending) {
+      try {
+        await flushCreateNote(item);
+      } catch (individualReason) {
+        if (individualReason instanceof ApiError && individualReason.status === 400) {
+          await markConflict(item, `Note could not sync: ${individualReason.message}`);
+          continue;
+        }
+        throw individualReason;
+      }
+    }
+    return;
+  }
+
   if (result.notes.length !== pending.length) {
     throw new Error(`Bulk note sync returned ${result.notes.length} notes for ${pending.length} local notes.`);
   }
@@ -393,9 +431,15 @@ async function pullSnapshot() {
     const byRemoteNote = new Map(localNotes.filter((note) => note.remote_id).map((note) => [note.remote_id!, note]));
     const seenRemoteNotes = new Set<string>();
 
-    for (const summary of remoteNoteSummaries) {
-      const remoteNote = await remoteApi.getNote(summary.id);
-      seenRemoteNotes.add(remoteNote.id);
+    const noteSummariesToFetch = remoteNoteSummaries.filter((summary) => {
+      seenRemoteNotes.add(summary.id);
+      const existingNote = byRemoteNote.get(summary.id);
+      return !existingNote
+        || dirtyEntities.has(existingNote.id)
+        || existingNote.updated_at_ms !== summary.updated_at_ms;
+    });
+    const fetchedNotes = await mapConcurrent(noteSummariesToFetch, SNAPSHOT_FETCH_CONCURRENCY, (summary) => remoteApi.getNote(summary.id));
+    for (const remoteNote of fetchedNotes) {
       const existingNote = byRemoteNote.get(remoteNote.id);
       if (!existingNote || !dirtyEntities.has(existingNote.id)) await localDb.putNote(cleanNote(remoteNote, localDeck.id, existingNote));
     }
@@ -411,11 +455,16 @@ async function pullSnapshot() {
     const refreshedNotes = (await localDb.notes()).filter((note) => note.deck_id === localDeck.id);
     const noteByRemote = new Map(refreshedNotes.filter((note) => note.remote_id).map((note) => [note.remote_id!, note]));
 
-    for (const summary of remoteCards) {
-      const existing = byRemoteCard.get(summary.id);
+    const fetchedCards = await mapConcurrent(remoteCards, SNAPSHOT_FETCH_CONCURRENCY, async (summary) => {
       seenRemoteCards.add(summary.id);
-      if (existing && dirtyEntities.has(existing.id)) continue;
+      const existing = byRemoteCard.get(summary.id);
+      if (existing && dirtyEntities.has(existing.id)) return undefined;
       const [detail, preview] = await Promise.all([remoteApi.getCard(summary.id), remoteApi.previewStudy(summary.id)]);
+      return { summary, detail, preview, existing };
+    });
+    for (const fetched of fetchedCards) {
+      if (!fetched) continue;
+      const { summary, detail, preview, existing } = fetched;
       const localNoteId = detail.note_id ? noteByRemote.get(detail.note_id)?.id : undefined;
       const record: LocalCard = {
         id: existing?.id ?? summary.id,
