@@ -7,6 +7,7 @@ const client = fs.readFileSync(new URL("../src/localClientApi.ts", import.meta.u
 const replication = fs.readFileSync(new URL("../src/localReplication.ts", import.meta.url), "utf8");
 const router = fs.readFileSync(new URL("../src/router.tsx", import.meta.url), "utf8");
 const main = fs.readFileSync(new URL("../src/main.tsx", import.meta.url), "utf8");
+const serviceWorker = fs.readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
 
 test("local mutations pair entity writes with the durable outbox", () => {
   assert.match(localDb, /putDeckWithOutbox/);
@@ -35,4 +36,19 @@ test("replication starts on boot and reconnect", () => {
   assert.match(main, /startReplication/);
   assert.match(main, /addEventListener\("online"/);
   assert.match(main, /replicateNow/);
+});
+
+test("Study always performs a document navigation for its route-scoped CSP", () => {
+  assert.match(main, /forceStudyDocumentNavigation/);
+  assert.match(main, /\/app\\\/decks\\\/\[\^\/\]\+\\\/study/);
+  assert.match(main, /window\.location\.assign\(url\.href\)/);
+  assert.match(main, /addEventListener\("click", forceStudyDocumentNavigation, \{ capture: true \}\)/);
+});
+
+test("service worker keeps Study policy out of the generic offline app shell", () => {
+  assert.match(serviceWorker, /const CACHE_VERSION = "deez-plane-v4"/);
+  assert.match(serviceWorker, /const STUDY_SHELL = "\/app\/decks\/__deez-study-shell__\/study"/);
+  assert.match(serviceWorker, /if \(response\.ok && !study\)/);
+  assert.match(serviceWorker, /cache\.put\("\/app", response\.clone\(\)\)/);
+  assert.match(serviceWorker, /if \(study\) return \(await caches\.match\(STUDY_SHELL\)\) \|\| Response\.error\(\)/);
 });

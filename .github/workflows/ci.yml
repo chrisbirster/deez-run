@@ -12,8 +12,6 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 35
-    env:
-      DEEZ_CORE_COMMIT: 8eb69930231664fe71d4ffe754022bc260045b9a
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -26,8 +24,8 @@ jobs:
         run: |
           npm ci
           npm run check
-      - name: Build production image against pinned Deez core
-        run: docker build --build-arg TARGETARCH=amd64 --build-arg DEEZ_COMMIT="$DEEZ_CORE_COMMIT" -t deez-run:ci .
+      - name: Build production image against Dockerfile-pinned Deez core
+        run: docker build --build-arg TARGETARCH=amd64 -t deez-run:ci .
       - name: Verify production runtime contains only Deez server requirements
         run: |
           docker run --rm --entrypoint /bin/sh deez-run:ci -c 'test -x /app/deez && test -f /app/web/index.html && test -f /app/web/deez-scheduler.wasm && ! command -v node && ! command -v npm && ! command -v zig && ! command -v python3'
@@ -98,6 +96,10 @@ jobs:
 
           grep -q '"status":"ok"' /tmp/health.json
           grep -qi '^content-security-policy: .*frame-ancestors '\''none'\''' /tmp/health.headers
+          if grep -qi 'wasm-unsafe-eval' /tmp/health.headers; then
+            echo 'health/API response unexpectedly enables WebAssembly compilation' >&2
+            exit 1
+          fi
           grep -qi '^cross-origin-opener-policy: same-origin' /tmp/health.headers
           grep -qi '^x-content-type-options: nosniff' /tmp/health.headers
           grep -qi '^x-frame-options: DENY' /tmp/health.headers
@@ -108,12 +110,32 @@ jobs:
 
           curl --fail --silent http://127.0.0.1:18080/ > /tmp/index.html
           grep -q 'id="root"' /tmp/index.html
+
           curl --fail --silent -D /tmp/spa.headers http://127.0.0.1:18080/nuts -o /tmp/spa-fallback.html
           grep -q 'id="root"' /tmp/spa-fallback.html
-          grep -qi '^content-security-policy: .*script-src '\''self'\''' /tmp/spa.headers
+          grep -qi '^content-security-policy: .*script-src '\''self'\'';' /tmp/spa.headers
+          if grep -qi 'wasm-unsafe-eval' /tmp/spa.headers; then
+            echo 'non-study SPA route unexpectedly enables WebAssembly compilation' >&2
+            exit 1
+          fi
           grep -qi '^referrer-policy: no-referrer' /tmp/spa.headers
 
-          curl --fail --silent http://127.0.0.1:18080/deez-scheduler.wasm -o /tmp/served-scheduler.wasm
+          curl --fail --silent -D /tmp/cards.headers http://127.0.0.1:18080/app/decks/42/cards -o /tmp/cards.html
+          grep -q 'id="root"' /tmp/cards.html
+          if grep -qi 'wasm-unsafe-eval' /tmp/cards.headers; then
+            echo 'card inspection route unexpectedly enables WebAssembly compilation' >&2
+            exit 1
+          fi
+
+          curl --fail --silent -D /tmp/study.headers http://127.0.0.1:18080/app/decks/42/study -o /tmp/study.html
+          grep -q 'id="root"' /tmp/study.html
+          grep -qi '^content-security-policy: .*script-src '\''self'\'' '\''wasm-unsafe-eval'\'';' /tmp/study.headers
+
+          curl --fail --silent -D /tmp/wasm.headers http://127.0.0.1:18080/deez-scheduler.wasm -o /tmp/served-scheduler.wasm
+          if grep -qi 'wasm-unsafe-eval' /tmp/wasm.headers; then
+            echo 'WASM asset response unexpectedly receives the study-page exception' >&2
+            exit 1
+          fi
           magic="$(od -An -tx1 -N4 /tmp/served-scheduler.wasm | tr -d ' \n')"
           test "$magic" = '0061736d'
           curl --fail --silent http://127.0.0.1:18080/sw.js | grep -q 'deez-scheduler.wasm'
