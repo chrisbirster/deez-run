@@ -110,7 +110,7 @@ jobs:
           grep -q 'id="root"' /tmp/index.html
           curl --fail --silent -D /tmp/spa.headers http://127.0.0.1:18080/nuts -o /tmp/spa-fallback.html
           grep -q 'id="root"' /tmp/spa-fallback.html
-          grep -qi '^content-security-policy: .*script-src '\''self'\''' /tmp/spa.headers
+          grep -qi '^content-security-policy: .*script-src '\''self'\'' '\''wasm-unsafe-eval'\''' /tmp/spa.headers
           grep -qi '^referrer-policy: no-referrer' /tmp/spa.headers
 
           curl --fail --silent http://127.0.0.1:18080/deez-scheduler.wasm -o /tmp/served-scheduler.wasm
