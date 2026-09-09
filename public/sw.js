@@ -1,7 +1,8 @@
 const CACHE_VERSION = "deez-plane-v4";
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const MEDIA_CACHE = `${CACHE_VERSION}-media`;
-const SHELL = ["/", "/app", "/manifest.webmanifest", "/deez-scheduler.wasm"];
+const STUDY_SHELL = "/app/decks/__deez-study-shell__/study";
+const SHELL = ["/", "/app", STUDY_SHELL, "/manifest.webmanifest", "/deez-scheduler.wasm"];
 
 function assetUrls(html) {
   const found = new Set();
@@ -47,15 +48,16 @@ async function navigation(request) {
   const study = isStudyPath(url.pathname);
   try {
     const response = await fetch(request);
-    if (response.ok) {
+    if (response.ok && !study) {
       const cache = await caches.open(SHELL_CACHE);
-      // Study carries a deliberately narrower CSP for scheduler WASM. Never
-      // let that response replace the generic /app shell used by other routes.
-      await cache.put(study ? url.pathname : "/app", response.clone());
+      // Only strict-CSP documents may replace the generic offline app shell.
+      await cache.put("/app", response.clone());
     }
     return response;
   } catch {
-    if (study) return (await caches.match(url.pathname)) || Response.error();
+    // The pre-cached Study shell received its narrow WASM CSP from the server;
+    // returning it preserves offline Study without ever weakening /app.
+    if (study) return (await caches.match(STUDY_SHELL)) || Response.error();
     return (await caches.match("/app")) || (await caches.match("/")) || Response.error();
   }
 }
