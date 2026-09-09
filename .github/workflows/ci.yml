@@ -12,8 +12,6 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 35
-    env:
-      DEEZ_CORE_COMMIT: 8eb69930231664fe71d4ffe754022bc260045b9a
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -26,8 +24,8 @@ jobs:
         run: |
           npm ci
           npm run check
-      - name: Build production image against pinned Deez core
-        run: docker build --build-arg TARGETARCH=amd64 --build-arg DEEZ_COMMIT="$DEEZ_CORE_COMMIT" -t deez-run:ci .
+      - name: Build production image against Dockerfile-pinned Deez core
+        run: docker build --build-arg TARGETARCH=amd64 -t deez-run:ci .
       - name: Verify production runtime contains only Deez server requirements
         run: |
           docker run --rm --entrypoint /bin/sh deez-run:ci -c 'test -x /app/deez && test -f /app/web/index.html && test -f /app/web/deez-scheduler.wasm && ! command -v node && ! command -v npm && ! command -v zig && ! command -v python3'
