@@ -13,7 +13,7 @@ import {
   type StudyPreview,
 } from "./remoteApi";
 import { appApi as localApi } from "./localClientApi";
-import { localDb, type LocalCard, type LocalDeck } from "./localDb";
+import { localDb, type LocalCard, type LocalDeck, type LocalNote } from "./localDb";
 
 function publicDeck(deck: LocalDeck): Deck {
   return {
@@ -83,6 +83,10 @@ async function remoteCardId(cardId: string) {
   return (await localDb.card(cardId))?.remote_id ?? cardId;
 }
 
+function mapRemoteNote(note: Note, local: LocalNote): Note {
+  return { ...note, id: local.id, deck_id: local.deck_id };
+}
+
 function mapRemoteCardDetail(detail: CardDetail, local?: LocalCard): CardDetail {
   return local
     ? { ...detail, id: local.id, deck_id: local.deck_id, note_id: local.note_id ?? detail.note_id }
@@ -91,6 +95,28 @@ function mapRemoteCardDetail(detail: CardDetail, local?: LocalCard): CardDetail 
 
 function mapRemotePreview(preview: StudyPreview, local?: LocalCard): StudyPreview {
   return local ? { ...preview, card_id: local.id } : preview;
+}
+
+async function refreshLocalCard(local: LocalCard, remoteId: string, reviewedAtMs: number) {
+  const [detail, preview] = await Promise.all([
+    remoteApi.getCard(remoteId),
+    remoteApi.previewStudy(remoteId),
+  ]);
+  const mappedDetail = mapRemoteCardDetail(detail, local);
+  const mappedPreview = mapRemotePreview(preview, local);
+  const dueAt = detail.scheduler?.due_at_ms ?? local.due_at_ms;
+  await localDb.putCard({
+    ...local,
+    summary: {
+      ...local.summary,
+      due_at_ms: dueAt,
+      last_reviewed_at_ms: detail.scheduler?.last_reviewed_at_ms ?? reviewedAtMs,
+    },
+    detail: mappedDetail,
+    preview: mappedPreview,
+    due_at_ms: dueAt,
+    pending_review: false,
+  });
 }
 
 export const appApi = {
@@ -168,9 +194,17 @@ export const appApi = {
 
   async getNote(noteId: string): Promise<Note> {
     const local = await localDb.note(noteId);
+    if (!navigator.onLine || local?.dirty) return localApi.getNote(noteId);
+    if (local?.remote_id) {
+      try {
+        return mapRemoteNote(await remoteApi.getNote(local.remote_id), local);
+      } catch (reason) {
+        if (!shouldFallback(reason)) throw reason;
+        return localApi.getNote(noteId);
+      }
+    }
     if (local) return localApi.getNote(noteId);
-    if (navigator.onLine) return remoteApi.getNote(noteId);
-    return localApi.getNote(noteId);
+    return remoteApi.getNote(noteId);
   },
 
   async createNote(deckId: string, input: NoteInput): Promise<Note> {
@@ -215,30 +249,48 @@ export const appApi = {
 
   async getCard(cardId: string): Promise<CardDetail> {
     const local = await localDb.card(cardId);
-    if (local) return localApi.getCard(cardId);
-    if (!navigator.onLine) return localApi.getCard(cardId);
-    const detail = await remoteApi.getCard(cardId);
-    return detail;
+    if (!navigator.onLine || local?.pending_review) return localApi.getCard(cardId);
+    try {
+      const detail = await remoteApi.getCard(local?.remote_id ?? cardId);
+      return mapRemoteCardDetail(detail, local);
+    } catch (reason) {
+      if (!shouldFallback(reason)) throw reason;
+      if (local) return localApi.getCard(cardId);
+      throw reason;
+    }
   },
 
   async previewStudy(cardId: string): Promise<StudyPreview> {
     const local = await localDb.card(cardId);
-    if (local) return localApi.previewStudy(cardId);
-    if (!navigator.onLine) return localApi.previewStudy(cardId);
-    return remoteApi.previewStudy(cardId);
+    if (!navigator.onLine || local?.pending_review) return localApi.previewStudy(cardId);
+    try {
+      const preview = await remoteApi.previewStudy(local?.remote_id ?? cardId);
+      return mapRemotePreview(preview, local);
+    } catch (reason) {
+      if (!shouldFallback(reason)) throw reason;
+      if (local) return localApi.previewStudy(cardId);
+      throw reason;
+    }
   },
 
   async review(cardId: string, rating: 1 | 2 | 3 | 4, expectedReviewCount: number, reviewedAtMs = Date.now()) {
     const local = await localDb.card(cardId);
     if (!navigator.onLine) return localApi.review(cardId, rating, expectedReviewCount, reviewedAtMs);
 
-    // When the card is already fully mirrored locally, preserve the existing
-    // durable offline-first review path. A card selected directly from the
-    // account cloud on a new device can be reviewed without waiting for a
-    // multi-thousand-card IndexedDB hydration first.
-    if (local) return localApi.review(cardId, rating, expectedReviewCount, reviewedAtMs);
+    if (local && (local.pending_review || await deckHasPending(local.deck_id))) {
+      return localApi.review(cardId, rating, expectedReviewCount, reviewedAtMs);
+    }
 
-    await remoteApi.review(await remoteCardId(cardId), rating, expectedReviewCount, reviewedAtMs);
+    const remoteId = local?.remote_id ?? cardId;
+    await remoteApi.review(remoteId, rating, expectedReviewCount, reviewedAtMs);
+    if (local) {
+      try {
+        await refreshLocalCard(local, remoteId, reviewedAtMs);
+      } catch {
+        // The review is already durable in the account cloud. A later read can
+        // refresh this optional offline cache without replaying the review.
+      }
+    }
     return undefined;
   },
 };
