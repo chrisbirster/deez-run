@@ -4,12 +4,16 @@ import test from "node:test";
 
 const localDb = fs.readFileSync(new URL("../src/localDb.ts", import.meta.url), "utf8");
 const client = fs.readFileSync(new URL("../src/localClientApi.ts", import.meta.url), "utf8");
+const accountClient = fs.readFileSync(new URL("../src/accountClientApi.ts", import.meta.url), "utf8");
 const replication = fs.readFileSync(new URL("../src/localReplication.ts", import.meta.url), "utf8");
 const diagnostics = fs.readFileSync(new URL("../src/deckSyncDiagnostics.ts", import.meta.url), "utf8");
 const syncedDecks = fs.readFileSync(new URL("../src/syncedDecksPage.tsx", import.meta.url), "utf8");
 const router = fs.readFileSync(new URL("../src/router.tsx", import.meta.url), "utf8");
 const main = fs.readFileSync(new URL("../src/main.tsx", import.meta.url), "utf8");
 const serviceWorker = fs.readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
+const appApi = fs.readFileSync(new URL("../src/appApi.ts", import.meta.url), "utf8");
+const authPatch = fs.readFileSync(new URL("../patches/patch-hosted-auth.py", import.meta.url), "utf8");
+const dockerfile = fs.readFileSync(new URL("../Dockerfile", import.meta.url), "utf8");
 
 test("local mutations pair entity writes with the durable outbox", () => {
   assert.match(localDb, /putDeckWithOutbox/);
@@ -27,34 +31,54 @@ test("review replication preserves timestamps and verifies idempotent 409 retrie
   assert.match(replication, /existing\.rating !== rating \|\| existing\.reviewed_at_ms !== reviewedAtMs/);
 });
 
-test("normal app API is local first and offline route is status rather than a second database", () => {
-  const appApi = fs.readFileSync(new URL("../src/appApi.ts", import.meta.url), "utf8");
-  assert.match(appApi, /localClientApi/);
+test("signed-in online reads use the account cloud while offline reads keep the local client", () => {
+  assert.match(appApi, /accountClientApi/);
+  assert.match(accountClient, /remoteApi\.listDecks\(\)/);
+  assert.match(accountClient, /mappedCloudDecks/);
+  assert.match(accountClient, /if \(!navigator\.onLine\) return localApi\.listDecks\(\)/);
+  assert.match(accountClient, /Never hide durable local-only work/);
   assert.match(router, /LocalFirstStatusPage/);
   assert.doesNotMatch(router, /OfflineStudyPage/);
 });
 
-test("boot replication is freshness-gated and reconnect still forces sync", () => {
-  assert.match(main, /BOOT_SYNC_MAX_AGE_MS/);
-  assert.match(main, /startReplicationIfStale/);
-  assert.match(main, /Date\.now\(\) - status\.last_sync_at_ms > BOOT_SYNC_MAX_AGE_MS/);
-  assert.match(main, /addEventListener\("online"/);
-  assert.match(main, /replicateNow/);
+test("online Study can use account cards before the full IndexedDB mirror exists", () => {
+  assert.match(accountClient, /remoteApi\.nextStudyCard/);
+  assert.match(accountClient, /remoteApi\.getCard/);
+  assert.match(accountClient, /remoteApi\.previewStudy/);
+  assert.match(accountClient, /remoteApi\.review/);
+  assert.match(accountClient, /deckHasPending/);
 });
 
-test("My nuts compares actual local records with cloud deck totals", () => {
+test("boot does not deep-hydrate every cloud deck and still replays pending mutations", () => {
+  assert.match(main, /pushPendingIfNeeded/);
+  assert.match(main, /status\.pending > 0/);
+  assert.match(main, /addEventListener\("online"/);
+  assert.doesNotMatch(main, /startReplicationIfStale/);
+  assert.doesNotMatch(main, /BOOT_SYNC_MAX_AGE_MS/);
+});
+
+test("My nuts compares local offline records with the shared account cloud", () => {
   assert.match(router, /SyncedDecksPage/);
   assert.match(diagnostics, /localDb\.notes\(\)/);
   assert.match(diagnostics, /localDb\.cards\(\)/);
   assert.match(diagnostics, /remoteApi\.listDecks\(\)/);
   assert.match(diagnostics, /Pending|pending/);
   assert.match(diagnostics, /conflicts/);
-  assert.match(syncedDecks, /Local:/);
-  assert.match(syncedDecks, /Cloud:/);
-  assert.match(syncedDecks, /Pending:/);
-  assert.match(syncedDecks, /Conflicts:/);
+  assert.match(syncedDecks, /Local offline copy:/);
+  assert.match(syncedDecks, /Account cloud:/);
+  assert.match(syncedDecks, /Sync for offline/);
   assert.match(syncedDecks, /visibilitychange/);
-  assert.match(syncedDecks, /replicateNow\(\)/);
+  assert.match(syncedDecks, /if \(!buildOfflineCopy \|\| !navigator\.onLine\) return/);
+});
+
+test("hosted auth converges legacy duplicate-email sessions onto one canonical account", () => {
+  assert.match(authPatch, /findUserByEmail/);
+  assert.match(authPatch, /legacy_decks/);
+  assert.match(authPatch, /assignDeck\(canonical\.id/);
+  assert.match(authPatch, /auth_sessions/);
+  assert.match(authPatch, /user_id = canonical\.id/);
+  assert.match(dockerfile, /patch-hosted-auth\.py/);
+  assert.match(dockerfile, /src\/hosted_auth\.zig/);
 });
 
 test("Study always performs a document navigation for its route-scoped CSP", () => {
