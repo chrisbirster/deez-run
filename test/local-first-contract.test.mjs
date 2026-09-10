@@ -71,8 +71,11 @@ test("My nuts compares local offline records with the shared account cloud", () 
   assert.match(syncedDecks, /if \(!buildOfflineCopy \|\| !navigator\.onLine\) return/);
 });
 
-test("hosted auth converges legacy duplicate-email sessions onto one canonical account", () => {
+test("hosted auth converges every historical identity with the same verified email", () => {
   assert.match(authPatch, /findUserByEmail/);
+  assert.match(authPatch, /"auth_users"/);
+  assert.match(authPatch, /\.email = canonical\.email/);
+  assert.match(authPatch, /duplicate_user_id/);
   assert.match(authPatch, /legacy_decks/);
   assert.match(authPatch, /assignDeck\(canonical\.id/);
   assert.match(authPatch, /auth_sessions/);
