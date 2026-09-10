@@ -1,7 +1,9 @@
 import { render } from "@solidjs/web";
 import App from "./App";
-import { replicateNow, startReplication } from "./localReplication";
+import { replicateNow, replicationStatus, startReplication } from "./localReplication";
 import "./reset.css";
+
+const BOOT_SYNC_MAX_AGE_MS = 5 * 60 * 1000;
 
 function forceStudyDocumentNavigation(event: MouseEvent) {
   if (
@@ -26,6 +28,13 @@ function forceStudyDocumentNavigation(event: MouseEvent) {
   window.location.assign(url.href);
 }
 
+async function startReplicationIfStale() {
+  if (!navigator.onLine) return;
+  const status = await replicationStatus();
+  const stale = !status.last_sync_at_ms || Date.now() - status.last_sync_at_ms > BOOT_SYNC_MAX_AGE_MS;
+  if (stale) await startReplication();
+}
+
 document.addEventListener("click", forceStudyDocumentNavigation, { capture: true });
 
 const root = document.getElementById("root");
@@ -39,7 +48,7 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-void startReplication().catch((reason) => console.warn("Initial Deez replication will retry later", reason));
+void startReplicationIfStale().catch((reason) => console.warn("Initial Deez replication will retry later", reason));
 window.addEventListener("online", () => {
   void replicateNow().catch((reason) => console.warn("Deez replication will retry later", reason));
 });
