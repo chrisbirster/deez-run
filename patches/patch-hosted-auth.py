@@ -13,21 +13,32 @@ new = '''        const session_user_id = try requiredString(session.bytes, "user
         var user = (try self.findUserById(allocator, session_user_id)) orelse return error.InvalidSession;
 
         // Email is the verified account identity. Older deployments could leave
-        // a long-lived session pointing at a non-canonical user document while
-        // a later magic-link login resolved through auth_emails to a different
-        // user id for the same address. Before serving any authenticated route,
-        // converge that session onto the canonical email owner and union the
-        // old user's deck ownership into it. This preserves data from both
-        // historical identities instead of making two devices look like two
-        // separate accounts.
+        // more than one user document for the same verified address, which in
+        // turn partitions deck ownership by user id. Always resolve through the
+        // canonical auth_emails owner, then union deck ownership from every
+        // historical user document with that same email. This makes either an
+        // old or a new browser capable of repairing the account on its next
+        // authenticated request.
         if (try self.findUserByEmail(allocator, user.email)) |canonical| {
-            if (!std.mem.eql(u8, canonical.id, user.id)) {
-                const legacy_decks = try self.ownedDeckIds(allocator, user.id);
-                defer allocator.free(legacy_decks);
+            var duplicates = try self.mongo.client.find(
+                self.database(),
+                "auth_users",
+                .{ .email = canonical.email },
+                .{},
+            );
+            defer duplicates.deinit();
+            while (try duplicates.next()) |document| {
+                const duplicate_user_id = try requiredString(document, "_id");
+                if (std.mem.eql(u8, duplicate_user_id, canonical.id)) continue;
+
+                const legacy_decks = try self.ownedDeckIds(allocator, duplicate_user_id);
                 for (legacy_decks) |deck_id| {
                     try self.assignDeck(canonical.id, deck_id, now_ms);
                 }
+                allocator.free(legacy_decks);
+            }
 
+            if (!std.mem.eql(u8, canonical.id, user.id)) {
                 var migrated = try self.mongo.client.updateOne(
                     self.database(),
                     "auth_sessions",
@@ -36,8 +47,8 @@ new = '''        const session_user_id = try requiredString(session.bytes, "user
                     false,
                 );
                 migrated.deinit();
-                user = canonical;
             }
+            user = canonical;
         }
 
         const refreshed_at_ms = (try optionalI64(session.bytes, "cookie_refreshed_at_ms")) orelse last_seen_at_ms;
