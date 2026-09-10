@@ -2,7 +2,6 @@ import { createRouter } from "@solidjs/router";
 import {
   AppHomePage,
   DeckPage as MyDeckPage,
-  DecksPage as MyDecksPage,
   LoginPage,
   MagicLinkPage,
   NoteEditorPage,
@@ -22,6 +21,7 @@ import {
   SearchPage,
 } from "./pages";
 import { HostedStudyPage } from "./studyPage";
+import { SyncedDecksPage } from "./syncedDecksPage";
 
 export const Router = createRouter({
   routes: [
@@ -36,7 +36,7 @@ export const Router = createRouter({
     { path: "/auth/magic", component: MagicLinkPage },
     { path: "/app", component: AppHomePage },
     { path: "/app/onboarding", component: OnboardingPage },
-    { path: "/app/decks", component: MyDecksPage },
+    { path: "/app/decks", component: SyncedDecksPage },
     { path: "/app/decks/:deckId", component: MyDeckPage },
     { path: "/app/decks/:deckId/notes/new", component: NoteEditorPage },
     { path: "/app/decks/:deckId/notes/:noteId", component: NoteEditorPage },
