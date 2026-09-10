@@ -1,9 +1,7 @@
 import { render } from "@solidjs/web";
 import App from "./App";
-import { replicateNow, replicationStatus, startReplication } from "./localReplication";
+import { replicateNow, replicationStatus } from "./localReplication";
 import "./reset.css";
-
-const BOOT_SYNC_MAX_AGE_MS = 5 * 60 * 1000;
 
 function forceStudyDocumentNavigation(event: MouseEvent) {
   if (
@@ -28,11 +26,10 @@ function forceStudyDocumentNavigation(event: MouseEvent) {
   window.location.assign(url.href);
 }
 
-async function startReplicationIfStale() {
+async function pushPendingIfNeeded() {
   if (!navigator.onLine) return;
   const status = await replicationStatus();
-  const stale = !status.last_sync_at_ms || Date.now() - status.last_sync_at_ms > BOOT_SYNC_MAX_AGE_MS;
-  if (stale) await startReplication();
+  if (status.pending > 0) await replicateNow();
 }
 
 document.addEventListener("click", forceStudyDocumentNavigation, { capture: true });
@@ -48,7 +45,11 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-void startReplicationIfStale().catch((reason) => console.warn("Initial Deez replication will retry later", reason));
+// Online account reads come directly from the signed-in cloud library. Do not
+// start a multi-thousand-record IndexedDB hydration on every page load; only
+// replay durable local mutations automatically. Full offline hydration remains
+// an explicit action on the sync/offline screens.
+void pushPendingIfNeeded().catch((reason) => console.warn("Pending Deez replication will retry later", reason));
 window.addEventListener("online", () => {
-  void replicateNow().catch((reason) => console.warn("Deez replication will retry later", reason));
+  void pushPendingIfNeeded().catch((reason) => console.warn("Pending Deez replication will retry later", reason));
 });

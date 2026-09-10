@@ -2,12 +2,10 @@ import { For, Show, createSignal, onCleanup, type ParentProps } from "solid-js";
 import * as stylex from "@stylexjs/stylex";
 import { ApiError, appApi, type User } from "./appApi";
 import { loadDeckSyncDiagnostics, type DeckSyncDiagnostic, type DeckSyncSnapshot, type DeckSyncState } from "./deckSyncDiagnostics";
-import { replicateNow, replicationStatus } from "./localReplication";
+import { replicateNow } from "./localReplication";
 import { appStyles as s } from "./appStyles.stylex";
 import { styles } from "./siteStyles";
 import { Seo } from "./seo";
-
-const SYNC_STALE_MS = 5 * 60 * 1000;
 
 function message(reason: unknown) {
   return reason instanceof Error ? reason.message : "Something went wrong.";
@@ -52,12 +50,12 @@ function SyncedShell(props: ParentProps) {
 
 function stateLabel(state: DeckSyncState) {
   switch (state) {
-    case "synced": return "synced";
-    case "syncing": return "syncing to this device";
+    case "synced": return "offline copy current";
+    case "syncing": return "cloud/local differ";
     case "pending": return "pending upload";
     case "conflict": return "sync conflict";
     case "local-only": return "local only";
-    case "cloud-only": return "cloud only · downloading";
+    case "cloud-only": return "in your cloud account";
     case "offline": return "offline copy";
     case "cloud-unavailable": return "cloud unavailable";
   }
@@ -74,17 +72,17 @@ function DeckDiagnosticRow(props: { deck: DeckSyncDiagnostic }) {
         <strong>{props.deck.name}</strong>
         <span {...stylex.attrs(s.muted)}>{stateLabel(props.deck.state)}</span>
       </div>
-      <p {...stylex.attrs(s.muted)}>Local: {counts(props.deck.local.notes, props.deck.local.cards, props.deck.local.due)}</p>
-      <Show when={props.deck.cloud} fallback={<p {...stylex.attrs(s.muted)}>Cloud: unavailable</p>}>
-        {(cloud) => <p {...stylex.attrs(s.muted)}>Cloud: {counts(cloud().notes, cloud().cards, cloud().due)}</p>}
+      <p {...stylex.attrs(s.muted)}>Local offline copy: {counts(props.deck.local.notes, props.deck.local.cards, props.deck.local.due)}</p>
+      <Show when={props.deck.cloud} fallback={<p {...stylex.attrs(s.muted)}>Account cloud: unavailable</p>}>
+        {(cloud) => <p {...stylex.attrs(s.muted)}>Account cloud: {counts(cloud().notes, cloud().cards, cloud().due)}</p>}
       </Show>
       <p {...stylex.attrs(s.muted)}>Pending: {props.deck.pending} · Conflicts: {props.deck.conflicts}</p>
     </>
   );
 
   return (
-    <Show when={props.deck.local_id} fallback={<div {...stylex.attrs(s.listItem)}>{body()}</div>}>
-      {(localId) => <a {...stylex.attrs(s.listItem)} href={`/app/decks/${localId()}`}>{body()}</a>}
+    <Show when={props.deck.local_id ?? props.deck.cloud_id} fallback={<div {...stylex.attrs(s.listItem)}>{body()}</div>}>
+      {(deckId) => <a {...stylex.attrs(s.listItem)} href={`/app/decks/${deckId()}`}>{body()}</a>}
     </Show>
   );
 }
@@ -98,7 +96,7 @@ export function SyncedDecksPage() {
   const [error, setError] = createSignal<string>();
   let activeRefresh: Promise<void> | undefined;
 
-  function refresh(forceSync = false) {
+  function refresh(buildOfflineCopy = false) {
     if (activeRefresh) return activeRefresh;
     activeRefresh = (async () => {
       setError(undefined);
@@ -107,11 +105,11 @@ export function SyncedDecksPage() {
         setSnapshot(first);
         setLoading(false);
 
-        const status = await replicationStatus();
-        const stale = !status.last_sync_at_ms || Date.now() - status.last_sync_at_ms > SYNC_STALE_MS;
-        const needsDownload = first.decks.some((deck) => deck.state === "syncing" || deck.state === "cloud-only");
-        const needsSync = forceSync || stale || status.pending > 0 || needsDownload;
-        if (!navigator.onLine || !needsSync) return;
+        // The cloud account is authoritative while online. A deep IndexedDB
+        // hydration is intentionally explicit because large decks can contain
+        // thousands of cards. Durable local mutations still replicate via the
+        // normal mutation path.
+        if (!buildOfflineCopy || !navigator.onLine) return;
 
         setSyncing(true);
         await replicateNow();
@@ -128,7 +126,7 @@ export function SyncedDecksPage() {
 
   void refresh();
 
-  const onOnline = () => { void refresh(true); };
+  const onOnline = () => { void refresh(); };
   const onVisible = () => {
     if (document.visibilityState === "visible") void refresh();
   };
@@ -156,17 +154,17 @@ export function SyncedDecksPage() {
 
   return (
     <SyncedShell>
-      <Seo title="My nuts" description="Your local-first Deez library with cross-device sync status." path="/app/decks" noindex />
+      <Seo title="My nuts" description="Your Deez account library and optional offline copies." path="/app/decks" noindex />
       <div {...stylex.attrs(s.topRow)}>
         <div>
           <p {...stylex.attrs(styles.eyebrow)}>Library</p>
           <h1 {...stylex.attrs(s.appHeading)}>My nuts</h1>
-          <p {...stylex.attrs(s.muted)}>Local is what this browser can study now. Cloud is what deez.run has for this account.</p>
+          <p {...stylex.attrs(s.muted)}>When you are online, Account cloud is the shared library for every browser signed into this account. Local is only this device's offline copy.</p>
         </div>
-        <button {...stylex.attrs(styles.button, styles.buttonSecondary)} disabled={syncing() || !navigator.onLine} onClick={() => void refresh(true)}>{syncing() ? "Syncing…" : "Sync now"}</button>
+        <button {...stylex.attrs(styles.button, styles.buttonSecondary)} disabled={syncing() || !navigator.onLine} onClick={() => void refresh(true)}>{syncing() ? "Building offline copy…" : "Sync for offline"}</button>
       </div>
 
-      <Show when={syncing()}><div {...stylex.attrs(s.success)}>Syncing this device from deez.run. Large decks may continue filling in while the cloud totals below remain visible.</div></Show>
+      <Show when={syncing()}><div {...stylex.attrs(s.success)}>Building this browser's offline copy from your account. You can keep using the cloud library while this runs.</div></Show>
       <Show when={snapshot()?.cloud_error}>{(value) => <div {...stylex.attrs(s.error)}>Cloud status: {value()}</div>}</Show>
       <Show when={error()}>{(value) => <div {...stylex.attrs(s.error)}>{value()}</div>}</Show>
 
@@ -179,7 +177,7 @@ export function SyncedDecksPage() {
       </form>
 
       <div {...stylex.attrs(s.list)}>
-        <Show when={!loading()} fallback={<div {...stylex.attrs(s.panel)}>Loading your local library and cloud totals…</div>}>
+        <Show when={!loading()} fallback={<div {...stylex.attrs(s.panel)}>Loading your account library…</div>}>
           <For each={snapshot()?.decks ?? []} fallback={<div {...stylex.attrs(s.panel)}>Your library is empty. Create your first nut above.</div>}>
             {(deck) => <DeckDiagnosticRow deck={deck} />}
           </For>
