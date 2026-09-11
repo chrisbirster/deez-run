@@ -1,4 +1,4 @@
-import { For, Show, createSignal, onCleanup, onMount, type ParentProps } from "solid-js";
+import { For, Show, createSignal, onCleanup, type ParentProps } from "solid-js";
 import { useParams } from "@solidjs/router";
 import * as stylex from "@stylexjs/stylex";
 import { ApiError, appApi, type CardDetail, type StudyNextOptions, type StudyPreview, type User } from "./appApi";
@@ -125,8 +125,8 @@ export function HostedStudyPage() {
   };
   window.addEventListener("keydown", keydown);
   onCleanup(() => window.removeEventListener("keydown", keydown));
-  onMount(() => void next());
 
+  void next();
   const labels: Array<[1 | 2 | 3 | 4, "again" | "hard" | "good" | "easy", string]> = [[1, "again", "Again"], [2, "hard", "Hard"], [3, "good", "Good"], [4, "easy", "Easy"]];
 
   return <StudyShell>
