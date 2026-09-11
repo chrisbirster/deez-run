@@ -1,4 +1,4 @@
-import { For, Show, createSignal, onCleanup, type ParentProps } from "solid-js";
+import { For, Show, createSignal, onCleanup, onMount, type ParentProps } from "solid-js";
 import { useParams } from "@solidjs/router";
 import * as stylex from "@stylexjs/stylex";
 import { ApiError, appApi, type CardDetail, type StudyNextOptions, type StudyPreview, type User } from "./appApi";
@@ -54,6 +54,7 @@ export function HostedStudyPage() {
   const [done, setDone] = createSignal(false);
   const [error, setError] = createSignal<string>();
   const [busy, setBusy] = createSignal(false);
+  const [loading, setLoading] = createSignal(true);
 
   const [draftNewLimit, setDraftNewLimit] = createSignal("");
   const [draftOrder, setDraftOrder] = createSignal<"due" | "reviews-first" | "new-first">("due");
@@ -73,6 +74,7 @@ export function HostedStudyPage() {
   }
 
   async function next() {
+    setLoading(true);
     setRevealed(false); setCard(undefined); setPreview(undefined); setError(undefined);
     try {
       const due = await appApi.nextStudyCard(deckId(), sessionOptions());
@@ -81,7 +83,11 @@ export function HostedStudyPage() {
       setDone(false);
       const [detail, schedule] = await Promise.all([appApi.getCard(due.card.id), appApi.previewStudy(due.card.id)]);
       setCard(detail); setPreview(schedule);
-    } catch (reason) { setError(message(reason)); }
+    } catch (reason) {
+      setError(message(reason));
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function restart(event?: SubmitEvent) {
@@ -119,8 +125,8 @@ export function HostedStudyPage() {
   };
   window.addEventListener("keydown", keydown);
   onCleanup(() => window.removeEventListener("keydown", keydown));
+  onMount(() => void next());
 
-  void next();
   const labels: Array<[1 | 2 | 3 | 4, "again" | "hard" | "good" | "easy", string]> = [[1, "again", "Again"], [2, "hard", "Hard"], [3, "good", "Good"], [4, "easy", "Easy"]];
 
   return <StudyShell>
@@ -134,11 +140,16 @@ export function HostedStudyPage() {
         <label {...stylex.attrs(s.field)}><span {...stylex.attrs(s.label)}>Order</span><select {...stylex.attrs(s.select)} value={draftOrder()} onChange={(event) => setDraftOrder(event.currentTarget.value as "due" | "reviews-first" | "new-first")}><option value="due">Due order</option><option value="reviews-first">Reviews first</option><option value="new-first">New first</option></select></label>
       </div>
       <label><input type="checkbox" checked={draftShuffle()} onChange={(event) => setDraftShuffle(event.currentTarget.checked)} /> Shuffle within the selected ordering</label>
-      <div {...stylex.attrs(s.actions)} style={{ "margin-top": "14px" }}><button {...stylex.attrs(styles.button, styles.buttonSecondary)} type="submit" disabled={busy()}>Apply / restart session</button><span {...stylex.attrs(s.muted)}>New cards introduced this session: {newSeen()}</span></div>
+      <div {...stylex.attrs(s.actions)} style={{ "margin-top": "14px" }}><button {...stylex.attrs(styles.button, styles.buttonSecondary)} type="submit" disabled={busy() || loading()}>Apply / restart session</button><span {...stylex.attrs(s.muted)}>New cards introduced this session: {newSeen()}</span></div>
     </form>
 
     <div style={{ "margin-top": "16px" }}>
-      <Show when={done()} fallback={<Show when={card()}>{(current) => <><section {...stylex.attrs(s.studyCard)}><div {...stylex.attrs(s.studyFace)}>{revealed() ? current().rendered.back : current().rendered.front}</div><Show when={!revealed()}><button {...stylex.attrs(styles.button)} onClick={() => setRevealed(true)}>Show answer</button></Show></section><Show when={revealed() && preview()}>{(schedule) => <div {...stylex.attrs(s.ratingGrid)}><For each={labels}>{([ratingValue, key, label]) => <button {...stylex.attrs(styles.button, styles.buttonSecondary)} disabled={busy()} onClick={() => void rate(ratingValue)}><span>{ratingValue} {label}</span>&nbsp;<small>{interval(schedule().schedule[key].interval_days)}</small></button>}</For></div>}</Show></>}</Show>}><div {...stylex.attrs(s.panel)}><h2>All caught up.</h2><p {...stylex.attrs(s.muted)}>No cards remain under the current session controls.</p><div {...stylex.attrs(s.actions)}><button {...stylex.attrs(styles.button, styles.buttonSecondary)} onClick={() => void restart()}>Restart session</button><a {...stylex.attrs(styles.button)} href={`/app/decks/${deckId()}`}>Back to deck</a></div></div></Show>
+      <Show when={loading()}>
+        <div {...stylex.attrs(s.panel)} role="status" aria-live="polite"><strong>Loading next card…</strong><p {...stylex.attrs(s.muted)}>Building your study queue from the account cloud.</p></div>
+      </Show>
+      <Show when={!loading()}>
+        <Show when={done()} fallback={<Show when={card()}>{(current) => <><section {...stylex.attrs(s.studyCard)}><div {...stylex.attrs(s.studyFace)}>{revealed() ? current().rendered.back : current().rendered.front}</div><Show when={!revealed()}><button {...stylex.attrs(styles.button)} onClick={() => setRevealed(true)}>Show answer</button></Show></section><Show when={revealed() && preview()}>{(schedule) => <div {...stylex.attrs(s.ratingGrid)}><For each={labels}>{([ratingValue, key, label]) => <button {...stylex.attrs(styles.button, styles.buttonSecondary)} disabled={busy()} onClick={() => void rate(ratingValue)}><span>{ratingValue} {label}</span>&nbsp;<small>{interval(schedule().schedule[key].interval_days)}</small></button>}</For></div>}</Show></>}</Show>}><div {...stylex.attrs(s.panel)}><h2>All caught up.</h2><p {...stylex.attrs(s.muted)}>No cards remain under the current session controls.</p><div {...stylex.attrs(s.actions)}><button {...stylex.attrs(styles.button, styles.buttonSecondary)} onClick={() => void restart()}>Restart session</button><a {...stylex.attrs(styles.button)} href={`/app/decks/${deckId()}`}>Back to deck</a></div></div></Show>
+      </Show>
     </div>
   </StudyShell>;
 }
