@@ -156,16 +156,21 @@ text = slow_counts_pattern.sub(
     text,
 )
 
+# Only DeckResponse construction uses owned.name immediately before the three
+# summary fields. The SQLite fallback inside fastDeckCounts has the same field
+# names but must remain based on deck_stats/notes.
 summary_fields_pattern = re.compile(
-    r'(?m)^(?P<indent>[ \t]*)\.note_count = notes\.len,\n'
+    r'(?m)^(?P<indent>[ \t]*)\.name = owned\.name,\n'
+    r'(?P=indent)\.note_count = notes\.len,\n'
     r'(?P=indent)\.card_count = deck_stats\.card_count,\n'
     r'(?P=indent)\.due_count = deck_stats\.due_count,$'
 )
 summary_field_matches = list(summary_fields_pattern.finditer(text))
 if len(summary_field_matches) != 2:
-    raise SystemExit(f"expected two deck summary field triples, found {len(summary_field_matches)}")
+    raise SystemExit(f"expected two owned deck summary field groups, found {len(summary_field_matches)}")
 text = summary_fields_pattern.sub(
     lambda match: (
+        f'{match.group("indent")}.name = owned.name,\n'
         f'{match.group("indent")}.note_count = counts.note_count,\n'
         f'{match.group("indent")}.card_count = counts.card_count,\n'
         f'{match.group("indent")}.due_count = counts.due_count,'
