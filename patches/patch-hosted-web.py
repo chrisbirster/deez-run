@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import sys
 
 path = Path(sys.argv[1] if len(sys.argv) > 1 else "src/hosted_web.zig")
@@ -143,13 +144,17 @@ fn fastDeckCounts(self: *Handler, allocator: std.mem.Allocator, deck_id: u64) !D
 '''
 text = text.replace(marker, helpers + marker, 1)
 
-slow_counts = '''        const deck_stats = try self.store.stats(nowMs(self.io), deck_id);
-        const notes = try storage.ContentStore.init(self.store).notesForDeck(res.arena, deck_id);'''
-fast_counts = '''        const counts = try fastDeckCounts(self, res.arena, deck_id);'''
-slow_count_occurrences = text.count(slow_counts)
-if slow_count_occurrences != 2:
-    raise SystemExit(f"expected two slow hosted deck summary blocks, found {slow_count_occurrences}")
-text = text.replace(slow_counts, fast_counts)
+slow_counts_pattern = re.compile(
+    r'(?m)^(?P<indent>[ \t]*)const deck_stats = try self\.store\.stats\(nowMs\(self\.io\), deck_id\);\n'
+    r'(?P=indent)const notes = try storage\.ContentStore\.init\(self\.store\)\.notesForDeck\(res\.arena, deck_id\);$'
+)
+slow_matches = list(slow_counts_pattern.finditer(text))
+if len(slow_matches) != 2:
+    raise SystemExit(f"expected two slow hosted deck summary blocks, found {len(slow_matches)}")
+text = slow_counts_pattern.sub(
+    lambda match: f'{match.group("indent")}const counts = try fastDeckCounts(self, res.arena, deck_id);',
+    text,
+)
 
 field_replacements = {
     ".note_count = notes.len,": ".note_count = counts.note_count,",
