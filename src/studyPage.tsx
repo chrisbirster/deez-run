@@ -3,6 +3,7 @@ import { useParams } from "@solidjs/router";
 import * as stylex from "@stylexjs/stylex";
 import { ApiError, appApi, type CardDetail, type StudyNextOptions, type StudyPreview, type User } from "./appApi";
 import { appStyles as s } from "./appStyles.stylex";
+import { safeCardMarkup } from "./cardMarkup";
 import { styles } from "./siteStyles";
 import { Seo } from "./seo";
 
@@ -55,6 +56,7 @@ export function HostedStudyPage() {
   const [error, setError] = createSignal<string>();
   const [busy, setBusy] = createSignal(false);
   const [loading, setLoading] = createSignal(true);
+  const [typedAnswer, setTypedAnswer] = createSignal("");
 
   const [draftNewLimit, setDraftNewLimit] = createSignal("");
   const [draftOrder, setDraftOrder] = createSignal<"due" | "reviews-first" | "new-first">("due");
@@ -75,6 +77,7 @@ export function HostedStudyPage() {
 
   async function next() {
     setLoading(true);
+    setTypedAnswer("");
     setRevealed(false); setCard(undefined); setPreview(undefined); setError(undefined);
     try {
       const due = await appApi.nextStudyCard(deckId(), sessionOptions());
@@ -148,7 +151,7 @@ export function HostedStudyPage() {
         <div {...stylex.attrs(s.panel)} role="status" aria-live="polite"><strong>Loading next card…</strong><p {...stylex.attrs(s.muted)}>Building your study queue from the account cloud.</p></div>
       </Show>
       <Show when={!loading()}>
-        <Show when={done()} fallback={<Show when={card()}>{(current) => <><section {...stylex.attrs(s.studyCard)}><div {...stylex.attrs(s.studyFace)}>{revealed() ? current().rendered.back : current().rendered.front}</div><Show when={!revealed()}><button {...stylex.attrs(styles.button)} onClick={() => setRevealed(true)}>Show answer</button></Show></section><Show when={revealed() && preview()}>{(schedule) => <div {...stylex.attrs(s.ratingGrid)}><For each={labels}>{([ratingValue, key, label]) => <button {...stylex.attrs(styles.button, styles.buttonSecondary)} disabled={busy()} onClick={() => void rate(ratingValue)}><span>{ratingValue} {label}</span>&nbsp;<small>{interval(schedule().schedule[key].interval_days)}</small></button>}</For></div>}</Show></>}</Show>}><div {...stylex.attrs(s.panel)}><h2>All caught up.</h2><p {...stylex.attrs(s.muted)}>No cards remain under the current session controls.</p><div {...stylex.attrs(s.actions)}><button {...stylex.attrs(styles.button, styles.buttonSecondary)} onClick={() => void restart()}>Restart session</button><a {...stylex.attrs(styles.button)} href={`/app/decks/${deckId()}`}>Back to deck</a></div></div></Show>
+        <Show when={done()} fallback={<Show when={card()}>{(current) => <><section {...stylex.attrs(s.studyCard)}><div {...stylex.attrs(s.studyFace)} innerHTML={safeCardMarkup(revealed() ? current().rendered.back : current().rendered.front)} /><Show when={!revealed() && current().rendered.interaction.type === "type_answer"}><label {...stylex.attrs(s.field)} style={{ width: "100%" }}><span {...stylex.attrs(s.label)}>Your answer</span><input {...stylex.attrs(s.input)} value={typedAnswer()} autocomplete="off" autocapitalize="off" onInput={(event) => setTypedAnswer(event.currentTarget.value)} /></label></Show><Show when={revealed() && current().rendered.interaction.type === "type_answer" && typedAnswer().trim()}><p {...stylex.attrs(s.muted)}>Your answer: {typedAnswer()}</p></Show><Show when={!revealed()}><button {...stylex.attrs(styles.button)} onClick={() => setRevealed(true)}>Show answer</button></Show></section><Show when={revealed() && preview()}>{(schedule) => <div {...stylex.attrs(s.ratingGrid)}><For each={labels}>{([ratingValue, key, label]) => <button {...stylex.attrs(styles.button, styles.buttonSecondary)} disabled={busy()} onClick={() => void rate(ratingValue)}><span>{ratingValue} {label}</span>&nbsp;<small>{interval(schedule().schedule[key].interval_days)}</small></button>}</For></div>}</Show></>}</Show>}><div {...stylex.attrs(s.panel)}><h2>All caught up.</h2><p {...stylex.attrs(s.muted)}>No cards remain under the current session controls.</p><div {...stylex.attrs(s.actions)}><button {...stylex.attrs(styles.button, styles.buttonSecondary)} onClick={() => void restart()}>Restart session</button><a {...stylex.attrs(styles.button)} href={`/app/decks/${deckId()}`}>Back to deck</a></div></div></Show>
       </Show>
     </div>
   </StudyShell>;

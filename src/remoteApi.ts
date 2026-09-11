@@ -46,13 +46,32 @@ export type StudyPreview = {
   schedule: Record<"again" | "hard" | "good" | "easy", StudyCandidate>;
   fsrs7_parameters: Fsrs7Parameters;
 };
+
+export type CardChoice = { id: string; text: string };
+export type OcclusionMask = {
+  id: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  answer: string;
+  prompt?: string;
+};
+export type CardInteraction =
+  | { type: "reveal" }
+  | { type: "type_answer"; answer: string }
+  | { type: "single_choice"; choices: CardChoice[]; correct_id: string }
+  | { type: "multiple_choice"; choices: CardChoice[]; correct_ids: string[] }
+  | { type: "ordering"; items: CardChoice[] }
+  | { type: "image_occlusion"; image_ref: string; masks: OcclusionMask[]; target_mask_id: number };
+
 export type CardDetail = {
   id: ApiId;
   deck_id: ApiId;
   note_id?: ApiId;
   note_type?: string;
   generation?: CardGeneration;
-  rendered: { front: string; back: string; css: string };
+  rendered: { front: string; back: string; css: string; interaction: CardInteraction };
   scheduler?: SchedulerState | null;
   review_count: number;
   reviews?: ReviewHistory[];
