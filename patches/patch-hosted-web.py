@@ -156,16 +156,22 @@ text = slow_counts_pattern.sub(
     text,
 )
 
-field_replacements = {
-    ".note_count = notes.len,": ".note_count = counts.note_count,",
-    ".card_count = deck_stats.card_count,": ".card_count = counts.card_count,",
-    ".due_count = deck_stats.due_count,": ".due_count = counts.due_count,",
-}
-for old_field, new_field in field_replacements.items():
-    field_count = text.count(old_field)
-    if field_count != 2:
-        raise SystemExit(f"expected two hosted deck summary fields for {old_field}, found {field_count}")
-    text = text.replace(old_field, new_field)
+summary_fields_pattern = re.compile(
+    r'(?m)^(?P<indent>[ \t]*)\.note_count = notes\.len,\n'
+    r'(?P=indent)\.card_count = deck_stats\.card_count,\n'
+    r'(?P=indent)\.due_count = deck_stats\.due_count,$'
+)
+summary_field_matches = list(summary_fields_pattern.finditer(text))
+if len(summary_field_matches) != 2:
+    raise SystemExit(f"expected two deck summary field triples, found {len(summary_field_matches)}")
+text = summary_fields_pattern.sub(
+    lambda match: (
+        f'{match.group("indent")}.note_count = counts.note_count,\n'
+        f'{match.group("indent")}.card_count = counts.card_count,\n'
+        f'{match.group("indent")}.due_count = counts.due_count,'
+    ),
+    text,
+)
 
 path.write_text(text)
 print(f"patched {path}")
