@@ -79,9 +79,7 @@
   font-size: 18px;
 }
 
-[data-deez="deck-settings"] {
-  margin-bottom: 18px;
-}
+[data-deez="deck-settings"] { margin-bottom: 18px; }
 
 @media (max-width: 900px) {
   [data-deez="app-shell"] {
@@ -89,8 +87,8 @@
     padding: 10px 10px 88px !important;
   }
 
-  /* Mobile Deez is a real app navigation surface rather than a stacked desktop
-     sidebar. The same four destinations stay thumb-reachable at the bottom. */
+  /* Mobile Deez becomes a thumb-reachable bottom navigation instead of a
+     vertically stacked desktop sidebar. */
   [data-deez="app-shell"] > [data-deez="sidebar"],
   [data-deez="public-shell"] > [data-deez="sidebar"] {
     position: fixed !important;
@@ -106,16 +104,14 @@
     backdrop-filter: blur(18px);
   }
 
-  [data-deez="app-shell"] [data-deez="sidebar-inner"],
-  [data-deez="public-shell"] [data-deez="sidebar-inner"] {
+  [data-deez="app-shell"] [data-deez="sidebar-sticky"],
+  [data-deez="public-shell"] [data-deez="sidebar-sticky"] {
     position: static !important;
     display: block !important;
   }
 
   [data-deez="sidebar"] [data-deez="profile"],
-  [data-deez="sidebar"] [data-deez="quote"] {
-    display: none !important;
-  }
+  [data-deez="sidebar"] [data-deez="quote"] { display: none !important; }
 
   [data-deez="sidebar"] [data-deez="side-nav"] {
     display: grid !important;
@@ -136,44 +132,16 @@
     text-align: center !important;
   }
 
-  [data-deez="sidebar"] [data-deez="side-link"] svg {
-    width: 20px !important;
-    height: 20px !important;
-  }
-
-  [data-deez="main"],
-  [data-deez="public-content"] {
-    width: 100% !important;
-    min-width: 0 !important;
-  }
-
-  [data-deez="dashboard-hero"] {
-    min-height: 420px !important;
-  }
-
-  [data-deez="stats"] {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
+  [data-deez="sidebar"] [data-deez="side-link"] svg { width: 20px !important; height: 20px !important; }
+  [data-deez="main"], [data-deez="public-content"] { width: 100% !important; min-width: 0 !important; }
+  [data-deez="dashboard-hero"] { min-height: 420px !important; }
+  [data-deez="stats"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 }
 
 @media (max-width: 640px) {
-  [data-deez="study-counters"] {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  [data-deez="import-stages"] {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  [data-deez="header"] {
-    padding-inline: 10px !important;
-  }
-
-  [data-deez="topnav"] [data-deez="navlink"] span {
-    display: none;
-  }
-
-  [data-deez="account-name"] {
-    display: none !important;
-  }
+  [data-deez="study-counters"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  [data-deez="import-stages"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  [data-deez="header"] { padding-inline: 10px !important; }
+  [data-deez="topnav"] [data-deez="navlink"] span { display: none; }
+  [data-deez="account-name"] { display: none !important; }
 }
