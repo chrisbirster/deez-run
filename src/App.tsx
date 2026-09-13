@@ -1,4 +1,5 @@
 import { Show, createSignal, type ParentProps } from "solid-js";
+import { useLocation } from "@solidjs/router";
 import * as stylex from "@stylexjs/stylex";
 import { appApi, type User } from "./appApi";
 import { AppSidebar } from "./appChrome";
@@ -11,21 +12,21 @@ function initials(username?: string | null) {
   return (value || "dz").toUpperCase();
 }
 
-function topActive(path: string) {
-  const current = window.location.pathname;
+function topActive(path: string, current: string) {
   if (path === "/nuts") return current === "/nuts" || current.startsWith("/nuts/");
   if (path === "/app") return current.startsWith("/app");
   return current === path || current.startsWith(`${path}/`);
 }
 
 function Layout(props: ParentProps) {
+  const location = useLocation();
   const [user, setUser] = createSignal<User>();
   const [authResolved, setAuthResolved] = createSignal(false);
 
   void appApi.me().then(setUser).catch(() => undefined).finally(() => setAuthResolved(true));
 
-  const appRoute = () => window.location.pathname.startsWith("/app");
-  const authRoute = () => window.location.pathname === "/login" || window.location.pathname.startsWith("/auth/");
+  const appRoute = () => location.pathname.startsWith("/app");
+  const authRoute = () => location.pathname === "/login" || location.pathname.startsWith("/auth/");
   const usePublicSidebar = () => Boolean(user()) && !appRoute() && !authRoute();
 
   const nav = [
@@ -46,7 +47,7 @@ function Layout(props: ParentProps) {
 
           <nav {...stylex.attrs(styles.nav)} data-deez="topnav" aria-label="Primary navigation">
             {nav.map(([href, icon, label]) => (
-              <a {...stylex.attrs(styles.navLink)} data-deez="navlink" data-active={topActive(href) ? "true" : "false"} href={href}>
+              <a {...stylex.attrs(styles.navLink)} data-deez="navlink" data-active={topActive(href, location.pathname) ? "true" : "false"} href={href}>
                 <UiIcon name={icon} />
                 <span>{label}</span>
               </a>
@@ -64,7 +65,7 @@ function Layout(props: ParentProps) {
           </nav>
         </header>
 
-        <Show when={usePublicSidebar()} fallback={<main>{props.children}</main>}>
+        <Show when={usePublicSidebar()} fallback={<main data-deez="route-main">{props.children}</main>}>
           <main data-deez="public-shell">
             <AppSidebar user={user()} loading={!authResolved()} />
             <div data-deez="public-content">{props.children}</div>

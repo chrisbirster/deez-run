@@ -1,4 +1,4 @@
-const CACHE_VERSION = "deez-plane-v5";
+const CACHE_VERSION = "deez-plane-v6";
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const MEDIA_CACHE = `${CACHE_VERSION}-media`;
 const STUDY_SHELL = "/app/decks/__deez-study-shell__/study";

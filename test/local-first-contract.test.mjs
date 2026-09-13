@@ -17,6 +17,8 @@ const dockerfile = fs.readFileSync(new URL("../Dockerfile", import.meta.url), "u
 const app = fs.readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
 const appChrome = fs.readFileSync(new URL("../src/appChrome.tsx", import.meta.url), "utf8");
 const dashboard = fs.readFileSync(new URL("../src/dashboardPage.tsx", import.meta.url), "utf8");
+const study = fs.readFileSync(new URL("../src/studyPage.tsx", import.meta.url), "utf8");
+const layoutRefine = fs.readFileSync(new URL("../src/layoutRefine.css", import.meta.url), "utf8");
 
 test("local mutations pair entity writes with the durable outbox", () => {
   assert.match(localDb, /putDeckWithOutbox/);
@@ -74,10 +76,13 @@ test("My nuts compares local offline records with the shared account cloud", () 
   assert.match(syncedDecks, /if \(!buildOfflineCopy \|\| !navigator\.onLine\) return/);
 });
 
-test("signed-in chrome hides Sign in, keeps email out of the sidebar, and uses the supplied reference shell", () => {
+test("signed-in chrome hides Sign in, keeps email out of the sidebar, and uses one route-correct sidebar", () => {
   assert.match(app, /appApi\.me\(\)\.then\(setUser\)/);
+  assert.match(app, /useLocation/);
+  assert.match(app, /location\.pathname\.startsWith\("\/app"\)/);
   assert.match(app, /data-deez="topnav"/);
   assert.match(app, /AppSidebar/);
+  assert.match(app, /data-deez="route-main"/);
   assert.match(app, /@\{current\(\)\.username/);
   assert.doesNotMatch(appChrome, /current\(\)\.email/);
   assert.match(appChrome, /data-deez="sidebar"/);
@@ -89,6 +94,18 @@ test("signed-in chrome hides Sign in, keeps email out of the sidebar, and uses t
   assert.match(dashboard, /appApi\.listDecks\(\)/);
   assert.match(main, /neoRetro\.css/);
   assert.match(main, /neoRetroPublic\.css/);
+  assert.match(main, /layoutRefine\.css/);
+  assert.match(layoutRefine, /grid-template-rows: auto minmax\(0, 1fr\) auto/);
+  assert.match(layoutRefine, /\[data-deez="app-shell"\] > \[data-deez="sidebar"\]/);
+});
+
+test("Study uses the neon application controls rather than default form chrome", () => {
+  assert.match(study, /data-deez="study-controls"/);
+  assert.match(study, /data-deez="study-card"/);
+  assert.match(study, /data-deez="primary-button"/);
+  assert.match(study, /data-deez="secondary-button"/);
+  assert.match(layoutRefine, /\[data-deez="study-input"\]/);
+  assert.match(layoutRefine, /linear-gradient\(90deg, #ff3fc4, #e747ff\)/);
 });
 
 test("hosted auth converges every historical identity with the same verified email", () => {
@@ -112,7 +129,7 @@ test("Study always performs a document navigation for its route-scoped CSP", () 
 });
 
 test("service worker keeps Study policy out of the generic offline app shell", () => {
-  assert.match(serviceWorker, /const CACHE_VERSION = "deez-plane-v5"/);
+  assert.match(serviceWorker, /const CACHE_VERSION = "deez-plane-v6"/);
   assert.match(serviceWorker, /const STUDY_SHELL = "\/app\/decks\/__deez-study-shell__\/study"/);
   assert.match(serviceWorker, /if \(response\.ok && !study\)/);
   assert.match(serviceWorker, /cache\.put\("\/app", response\.clone\(\)\)/);

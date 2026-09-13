@@ -4,6 +4,7 @@ import { replicateNow, replicationStatus } from "./localReplication";
 import "./reset.css";
 import "./neoRetro.css";
 import "./neoRetroPublic.css";
+import "./layoutRefine.css";
 
 function forceStudyDocumentNavigation(event: MouseEvent) {
   if (
