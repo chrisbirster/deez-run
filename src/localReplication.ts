@@ -1,4 +1,4 @@
-import { ApiError, appApi as remoteApi, type CardDetail, type Deck, type Note, type User } from "./remoteApi";
+import { ApiError, appApi as remoteApi, type CardSummary, type Deck, type Note, type User } from "./remoteApi";
 import { localDb, type LocalCard, type LocalDeck, type LocalNote, type OutboxItem } from "./localDb";
 
 export type ReplicationStatus = {
@@ -9,8 +9,15 @@ export type ReplicationStatus = {
   account_id?: string;
 };
 
-const CREATE_NOTE_BATCH_SIZE = 25;
-const SNAPSHOT_FETCH_CONCURRENCY = 12;
+export type OfflineSyncProgress = {
+  deck_id: string;
+  total_cards: number;
+  hydrated_cards: number;
+  stage: "snapshot" | "card-details" | "complete";
+};
+
+const CREATE_NOTE_BATCH_SIZE = 50;
+const OFFLINE_FETCH_CONCURRENCY = 12;
 let active: Promise<ReplicationStatus> | undefined;
 
 function sameNote(local: LocalNote, remote: Note) {
@@ -25,8 +32,7 @@ async function mapConcurrent<T, R>(items: readonly T[], concurrency: number, wor
   const count = Math.min(Math.max(1, concurrency), items.length);
   await Promise.all(Array.from({ length: count }, async () => {
     while (true) {
-      const index = next;
-      next += 1;
+      const index = next++;
       if (index >= items.length) return;
       results[index] = await worker(items[index]);
     }
@@ -53,15 +59,7 @@ async function flushCreateDeck(item: OutboxItem) {
     return;
   }
   const remote = await remoteApi.createDeck(deck.name);
-  await localDb.putDeck({
-    ...deck,
-    remote_id: remote.id,
-    note_count: remote.note_count,
-    card_count: remote.card_count,
-    due_count: remote.due_count,
-    base_remote_name: remote.name,
-    dirty: false,
-  });
+  await localDb.putDeck({ ...deck, remote_id: remote.id, base_remote_name: remote.name, dirty: false });
   await localDb.deleteOutbox(item.id);
 }
 
@@ -89,25 +87,15 @@ async function flushDeleteDeck(item: OutboxItem) {
     await localDb.deleteOutbox(item.id);
     return;
   }
-
-  // Never let a queued deck deletion destroy an imported deck while one of its
-  // notes is preserved as a sync conflict. This is especially important for
-  // the portable importer's legacy rollback path: once bulk sync isolates a
-  // malformed note, keep the deck recoverable instead of racing ahead to the
-  // previously queued delete.
   const deckNotes = (await localDb.notes()).filter((note) => note.deck_id === deck.id);
   const noteIds = new Set(deckNotes.map((note) => note.id));
   const unresolvedNoteConflict = (await localDb.outbox()).some((queued) => (
-    queued.id !== item.id
-    && queued.kind === "create_note"
-    && Boolean(queued.conflict)
-    && noteIds.has(queued.entity_id)
+    queued.id !== item.id && queued.kind === "create_note" && Boolean(queued.conflict) && noteIds.has(queued.entity_id)
   ));
   if (unresolvedNoteConflict) {
     await markConflict(item, "Deck deletion paused because this deck still has unsynced note conflicts. Resolve or export the deck before deleting it.");
     return;
   }
-
   if (!deck.remote_id) {
     await localDb.deleteDeckRecord(deck.id);
     await localDb.deleteOutbox(item.id);
@@ -142,11 +130,7 @@ async function flushCreateNote(item: OutboxItem) {
   }
   const deckRemoteId = await remoteDeckId(note.deck_id);
   if (!deckRemoteId) return;
-  const remote = await remoteApi.createNote(deckRemoteId, {
-    note_type: note.note_type,
-    fields: note.fields,
-    tags: note.tags,
-  });
+  const remote = await remoteApi.createNote(deckRemoteId, { note_type: note.note_type, fields: note.fields, tags: note.tags });
   await localDb.putNote({
     ...note,
     remote_id: remote.id,
@@ -162,7 +146,6 @@ async function flushCreateNote(item: OutboxItem) {
 async function flushCreateNoteBatch(items: OutboxItem[]) {
   const pending: Array<{ item: OutboxItem; note: LocalNote }> = [];
   let localDeckId: string | undefined;
-
   for (const item of items) {
     const note = await localDb.note(item.entity_id);
     if (!note || note.deleted) {
@@ -177,27 +160,17 @@ async function flushCreateNoteBatch(items: OutboxItem[]) {
     if (note.deck_id !== localDeckId) break;
     pending.push({ item, note });
   }
-
   if (!pending.length || !localDeckId) return;
   const deckRemoteId = await remoteDeckId(localDeckId);
   if (!deckRemoteId) {
     await flushCreateNote(pending[0].item);
     return;
   }
-
   let result;
   try {
-    result = await remoteApi.createNotesBulk(deckRemoteId, pending.map(({ note }) => ({
-      note_type: note.note_type,
-      fields: note.fields,
-      tags: note.tags,
-    })));
+    result = await remoteApi.createNotesBulk(deckRemoteId, pending.map(({ note }) => ({ note_type: note.note_type, fields: note.fields, tags: note.tags })));
   } catch (reason) {
     if (!(reason instanceof ApiError && reason.status === 400)) throw reason;
-
-    // A single invalid imported note must not block every valid note behind it.
-    // Retry this batch item-by-item so valid notes can sync and the rejected
-    // note remains durable as a visible conflict for the user to repair.
     for (const { item } of pending) {
       try {
         await flushCreateNote(item);
@@ -211,11 +184,7 @@ async function flushCreateNoteBatch(items: OutboxItem[]) {
     }
     return;
   }
-
-  if (result.notes.length !== pending.length) {
-    throw new Error(`Bulk note sync returned ${result.notes.length} notes for ${pending.length} local notes.`);
-  }
-
+  if (result.notes.length !== pending.length) throw new Error(`Bulk note sync returned ${result.notes.length} notes for ${pending.length} local notes.`);
   for (let index = 0; index < pending.length; index += 1) {
     const { item, note } = pending[index];
     const remote = result.notes[index];
@@ -241,17 +210,11 @@ async function flushUpdateNote(item: OutboxItem) {
   const remoteId = note.remote_id;
   if (!remoteId) return;
   const remote = await remoteApi.getNote(remoteId);
-  if (note.base_remote_updated_at_ms !== undefined
-      && remote.updated_at_ms !== note.base_remote_updated_at_ms
-      && !sameNote(note, remote)) {
+  if (note.base_remote_updated_at_ms !== undefined && remote.updated_at_ms !== note.base_remote_updated_at_ms && !sameNote(note, remote)) {
     await markConflict(item, "Note was edited on another device. Resolve that edit before this local change is pushed.");
     return;
   }
-  const updated = await remoteApi.updateNote(remoteId, {
-    note_type: note.note_type,
-    fields: note.fields,
-    tags: note.tags,
-  });
+  const updated = await remoteApi.updateNote(remoteId, { note_type: note.note_type, fields: note.fields, tags: note.tags });
   await localDb.putNote({ ...note, updated_at_ms: updated.updated_at_ms, base_remote_updated_at_ms: updated.updated_at_ms, dirty: false });
   await localDb.deleteOutbox(item.id);
 }
@@ -320,24 +283,17 @@ function orderedOutbox(items: OutboxItem[]) {
 
 async function reconcileOrphanDecks() {
   const [localDecks, localNotes, localCards, pending, remoteDecks] = await Promise.all([
-    localDb.decks(),
-    localDb.notes(),
-    localDb.cards(),
-    localDb.outbox(),
-    remoteApi.listDecks(),
+    localDb.decks(), localDb.notes(), localDb.cards(), localDb.outbox(), remoteApi.listDecks(),
   ]);
   const createDeckPending = new Set(pending.filter((item) => item.kind === "create_deck").map((item) => item.entity_id));
-
   for (const local of localDecks) {
     if (local.deleted || local.remote_id || createDeckPending.has(local.id)) continue;
     const notes = localNotes.filter((note) => note.deck_id === local.id && !note.deleted);
     const queuedNotes = pending.filter((item) => item.kind === "create_note" && notes.some((note) => note.id === item.entity_id));
     if (!notes.length || !queuedNotes.length) continue;
-
     const candidates = remoteDecks.filter((remote) => remote.name === local.name && remote.note_count === 0 && remote.card_count === 0);
     if (candidates.length !== 1) continue;
     const remote = candidates[0];
-
     const mirror = localDecks.find((deck) => deck.id !== local.id && (deck.remote_id === remote.id || deck.id === remote.id));
     if (mirror) {
       const mirrorHasNotes = localNotes.some((note) => note.deck_id === mirror.id && !note.deleted);
@@ -346,13 +302,7 @@ async function reconcileOrphanDecks() {
       if (mirrorHasNotes || mirrorHasCards || mirrorHasPending) continue;
       await localDb.deleteDeckRecord(mirror.id);
     }
-
-    await localDb.putDeck({
-      ...local,
-      remote_id: remote.id,
-      base_remote_name: remote.name,
-      dirty: false,
-    });
+    await localDb.putDeck({ ...local, remote_id: remote.id, base_remote_name: remote.name, dirty: false });
   }
 }
 
@@ -361,12 +311,8 @@ async function flushOutbox() {
   let index = 0;
   while (index < items.length) {
     const item = items[index];
-    if (item.conflict) {
-      index += 1;
-      continue;
-    }
+    if (item.conflict) { index += 1; continue; }
     if (!navigator.onLine) break;
-
     if (item.kind === "create_note") {
       const first = await localDb.note(item.entity_id);
       if (!first || first.deleted || first.remote_id) {
@@ -374,7 +320,6 @@ async function flushOutbox() {
         index += 1;
         continue;
       }
-
       const batch: OutboxItem[] = [];
       let cursor = index;
       while (cursor < items.length && batch.length < CREATE_NOTE_BATCH_SIZE) {
@@ -389,7 +334,6 @@ async function flushOutbox() {
       index = Math.max(cursor, index + 1);
       continue;
     }
-
     switch (item.kind) {
       case "create_deck": await flushCreateDeck(item); break;
       case "rename_deck": await flushRenameDeck(item); break;
@@ -403,14 +347,7 @@ async function flushOutbox() {
 }
 
 function cleanDeck(remote: Deck, existing?: LocalDeck): LocalDeck {
-  return {
-    ...remote,
-    id: existing?.id ?? remote.id,
-    remote_id: remote.id,
-    dirty: false,
-    deleted: false,
-    base_remote_name: remote.name,
-  };
+  return { ...remote, id: existing?.id ?? remote.id, remote_id: remote.id, dirty: false, deleted: false, base_remote_name: remote.name };
 }
 
 function cleanNote(remote: Note, localDeckId: string, existing?: LocalNote): LocalNote {
@@ -426,92 +363,90 @@ function cleanNote(remote: Note, localDeckId: string, existing?: LocalNote): Loc
   };
 }
 
+function lightweightCard(summary: CardSummary, localDeckId: string, localNoteId: string | undefined, existing?: LocalCard): LocalCard {
+  return {
+    id: existing?.id ?? summary.id,
+    remote_id: summary.id,
+    deck_id: localDeckId,
+    note_id: localNoteId,
+    summary: { ...summary, deck_id: localDeckId, note_id: localNoteId },
+    detail: existing?.detail,
+    preview: existing?.preview,
+    due_at_ms: summary.due_at_ms ?? 0,
+    pending_review: existing?.pending_review ?? false,
+  };
+}
+
+async function applyRemoteSnapshot(remoteDeck: Deck, dirtyEntities: Set<string>) {
+  const snapshot = await remoteApi.snapshotDeck(remoteDeck.id);
+  const [localDecks, allNotes, allCards] = await Promise.all([localDb.decks(), localDb.notes(), localDb.cards()]);
+  const existingDeck = localDecks.find((deck) => deck.remote_id === remoteDeck.id || (!deck.remote_id && deck.id === remoteDeck.id));
+  const localDeck = existingDeck && dirtyEntities.has(existingDeck.id) ? existingDeck : cleanDeck(snapshot.deck, existingDeck);
+  const localNotes = allNotes.filter((note) => note.deck_id === localDeck.id);
+  const byRemoteNote = new Map(localNotes.filter((note) => note.remote_id).map((note) => [note.remote_id!, note]));
+  const mergedNotes = snapshot.notes.map((remote) => {
+    const existing = byRemoteNote.get(remote.id);
+    return existing && dirtyEntities.has(existing.id) ? existing : cleanNote(remote, localDeck.id, existing);
+  });
+  const noteByRemote = new Map(mergedNotes.filter((note) => note.remote_id).map((note) => [note.remote_id!, note]));
+  const localCards = allCards.filter((card) => card.deck_id === localDeck.id);
+  const byRemoteCard = new Map(localCards.filter((card) => card.remote_id).map((card) => [card.remote_id!, card]));
+  const mergedCards = snapshot.cards.map((summary) => {
+    const existing = byRemoteCard.get(summary.id);
+    if (existing && dirtyEntities.has(existing.id)) return existing;
+    return lightweightCard(summary, localDeck.id, summary.note_id ? noteByRemote.get(summary.note_id)?.id : undefined, existing);
+  });
+
+  await localDb.putSnapshotBatch(localDeck, mergedNotes, mergedCards);
+  const remoteNoteIds = new Set(snapshot.notes.map((note) => note.id));
+  const remoteCardIds = new Set(snapshot.cards.map((card) => card.id));
+  for (const note of localNotes) {
+    if (note.remote_id && !remoteNoteIds.has(note.remote_id) && !dirtyEntities.has(note.id)) await localDb.deleteNoteRecord(note.id);
+  }
+  for (const card of localCards) {
+    if (card.remote_id && !remoteCardIds.has(card.remote_id) && !dirtyEntities.has(card.id)) await localDb.deleteCardRecord(card.id);
+  }
+  return localDeck;
+}
+
 async function pullSnapshot() {
   const pending = await localDb.outbox();
   const dirtyEntities = new Set(pending.map((item) => item.entity_id));
   const [remoteDecks, capabilities] = await Promise.all([remoteApi.listDecks(), remoteApi.capabilities()]);
   await localDb.putMeta("capabilities", capabilities);
-  const localDecks = await localDb.decks();
-  const byRemoteDeck = new Map(localDecks.filter((deck) => deck.remote_id).map((deck) => [deck.remote_id!, deck]));
-  const seenRemoteDecks = new Set<string>();
+  const localBefore = await localDb.decks();
+  const seen = new Set(remoteDecks.map((deck) => deck.id));
+  for (const remoteDeck of remoteDecks) await applyRemoteSnapshot(remoteDeck, dirtyEntities);
 
-  for (const remoteDeck of remoteDecks) {
-    seenRemoteDecks.add(remoteDeck.id);
-    const existingDeck = byRemoteDeck.get(remoteDeck.id);
-    if (!existingDeck || !dirtyEntities.has(existingDeck.id)) await localDb.putDeck(cleanDeck(remoteDeck, existingDeck));
-    const localDeck = existingDeck ?? cleanDeck(remoteDeck);
-
-    const [remoteNoteSummaries, remoteCards] = await Promise.all([
-      remoteApi.listNotes(remoteDeck.id),
-      remoteApi.listCards(remoteDeck.id),
-    ]);
-    const localNotes = (await localDb.notes()).filter((note) => note.deck_id === localDeck.id);
-    const byRemoteNote = new Map(localNotes.filter((note) => note.remote_id).map((note) => [note.remote_id!, note]));
-    const seenRemoteNotes = new Set<string>();
-
-    const noteSummariesToFetch = remoteNoteSummaries.filter((summary) => {
-      seenRemoteNotes.add(summary.id);
-      const existingNote = byRemoteNote.get(summary.id);
-      return !existingNote
-        || dirtyEntities.has(existingNote.id)
-        || existingNote.updated_at_ms !== summary.updated_at_ms;
-    });
-    const fetchedNotes = await mapConcurrent(noteSummariesToFetch, SNAPSHOT_FETCH_CONCURRENCY, (summary) => remoteApi.getNote(summary.id));
-    for (const remoteNote of fetchedNotes) {
-      const existingNote = byRemoteNote.get(remoteNote.id);
-      if (!existingNote || !dirtyEntities.has(existingNote.id)) await localDb.putNote(cleanNote(remoteNote, localDeck.id, existingNote));
-    }
-
-    for (const localNote of localNotes) {
-      if (!localNote.remote_id || seenRemoteNotes.has(localNote.remote_id) || dirtyEntities.has(localNote.id)) continue;
-      await localDb.deleteNoteRecord(localNote.id);
-    }
-
-    const currentCards = (await localDb.cards()).filter((card) => card.deck_id === localDeck.id);
-    const byRemoteCard = new Map(currentCards.filter((card) => card.remote_id).map((card) => [card.remote_id!, card]));
-    const seenRemoteCards = new Set<string>();
-    const refreshedNotes = (await localDb.notes()).filter((note) => note.deck_id === localDeck.id);
-    const noteByRemote = new Map(refreshedNotes.filter((note) => note.remote_id).map((note) => [note.remote_id!, note]));
-
-    const fetchedCards = await mapConcurrent(remoteCards, SNAPSHOT_FETCH_CONCURRENCY, async (summary) => {
-      seenRemoteCards.add(summary.id);
-      const existing = byRemoteCard.get(summary.id);
-      if (existing && dirtyEntities.has(existing.id)) return undefined;
-      const [detail, preview] = await Promise.all([remoteApi.getCard(summary.id), remoteApi.previewStudy(summary.id)]);
-      return { summary, detail, preview, existing };
-    });
-    for (const fetched of fetchedCards) {
-      if (!fetched) continue;
-      const { summary, detail, preview, existing } = fetched;
-      const localNoteId = detail.note_id ? noteByRemote.get(detail.note_id)?.id : undefined;
-      const record: LocalCard = {
-        id: existing?.id ?? summary.id,
-        remote_id: summary.id,
-        deck_id: localDeck.id,
-        note_id: localNoteId,
-        summary: { ...summary, deck_id: localDeck.id, note_id: localNoteId },
-        detail: { ...detail, deck_id: localDeck.id, note_id: localNoteId },
-        preview,
-        due_at_ms: summary.due_at_ms ?? 0,
-        pending_review: false,
-      };
-      await localDb.putCard(record);
-    }
-
-    for (const localCard of currentCards) {
-      if (!localCard.remote_id || seenRemoteCards.has(localCard.remote_id) || dirtyEntities.has(localCard.id)) continue;
-      await localDb.deleteCardRecord(localCard.id);
-    }
-  }
-
-  for (const localDeck of localDecks) {
-    if (!localDeck.remote_id || seenRemoteDecks.has(localDeck.remote_id) || dirtyEntities.has(localDeck.id)) continue;
+  for (const localDeck of localBefore) {
+    if (!localDeck.remote_id || seen.has(localDeck.remote_id) || dirtyEntities.has(localDeck.id)) continue;
     const notes = (await localDb.notes()).filter((note) => note.deck_id === localDeck.id);
     const cards = (await localDb.cards()).filter((card) => card.deck_id === localDeck.id);
     for (const note of notes) await localDb.deleteNoteRecord(note.id);
     for (const card of cards) await localDb.deleteCardRecord(card.id);
     await localDb.deleteDeckRecord(localDeck.id);
   }
+}
+
+export async function hydrateDeckForOffline(deckId: string, onProgress?: (progress: OfflineSyncProgress) => void) {
+  if (!navigator.onLine) throw new Error("Connect to the internet before syncing a deck for offline use.");
+  const local = await localDb.deck(deckId);
+  const remoteId = local?.remote_id ?? deckId;
+  const remoteDeck = await remoteApi.getDeck(remoteId);
+  const currentOutbox = await localDb.outbox();
+  const localDeck = await applyRemoteSnapshot(remoteDeck, new Set(currentOutbox.map((item) => item.entity_id)));
+  const cards = (await localDb.cards()).filter((card) => card.deck_id === localDeck.id);
+  onProgress?.({ deck_id: localDeck.id, total_cards: cards.length, hydrated_cards: cards.filter((card) => card.detail && card.preview).length, stage: "snapshot" });
+  let completed = cards.filter((card) => card.detail && card.preview).length;
+  const missing = cards.filter((card) => !card.detail || !card.preview);
+  await mapConcurrent(missing, OFFLINE_FETCH_CONCURRENCY, async (card) => {
+    const remoteCardId = card.remote_id ?? card.id;
+    const [detail, preview] = await Promise.all([remoteApi.getCard(remoteCardId), remoteApi.previewStudy(remoteCardId)]);
+    await localDb.putCard({ ...card, detail: { ...detail, id: card.id, deck_id: card.deck_id, note_id: card.note_id }, preview: { ...preview, card_id: card.id } });
+    completed += 1;
+    onProgress?.({ deck_id: localDeck.id, total_cards: cards.length, hydrated_cards: completed, stage: "card-details" });
+  });
+  onProgress?.({ deck_id: localDeck.id, total_cards: cards.length, hydrated_cards: cards.length, stage: "complete" });
 }
 
 async function ensureAccount(user: User) {
