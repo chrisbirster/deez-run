@@ -1,5 +1,3 @@
-import type { JSX } from "solid-js";
-
 export type UiIconName =
   | "layers"
   | "search"
@@ -18,7 +16,7 @@ export type UiIconName =
   | "calendar"
   | "chevron";
 
-export function UiIcon(props: { name: UiIconName; size?: number; class?: string }): JSX.Element {
+export function UiIcon(props: { name: UiIconName; size?: number; class?: string }) {
   const size = () => props.size ?? 24;
   const common = {
     width: size(),
@@ -29,7 +27,7 @@ export function UiIcon(props: { name: UiIconName; size?: number; class?: string 
     "stroke-width": 1.9,
     "stroke-linecap": "round" as const,
     "stroke-linejoin": "round" as const,
-    "aria-hidden": "true",
+    "aria-hidden": true,
     class: props.class,
   };
 
