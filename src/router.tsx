@@ -1,6 +1,5 @@
 import { createRouter } from "@solidjs/router";
 import {
-  DeckPage as MyDeckPage,
   LoginPage,
   MagicLinkPage,
   NoteEditorPage,
@@ -8,6 +7,7 @@ import {
   SettingsPage,
 } from "./appPages";
 import { DashboardPage } from "./dashboardPage";
+import { DeckPage as MyDeckPage } from "./deckPage";
 import { LocalFirstStatusPage } from "./localFirstPages";
 import { CardInspectPage, DeckCardsPage } from "./parityPages";
 import { ToolsPage } from "./toolsPage";
