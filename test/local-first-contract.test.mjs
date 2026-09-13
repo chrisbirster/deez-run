@@ -74,18 +74,21 @@ test("My nuts compares local offline records with the shared account cloud", () 
   assert.match(syncedDecks, /if \(!buildOfflineCopy \|\| !navigator\.onLine\) return/);
 });
 
-test("signed-in chrome hides Sign in, keeps email out of the sidebar, and uses the retro dashboard", () => {
+test("signed-in chrome hides Sign in, keeps email out of the sidebar, and uses the supplied reference shell", () => {
   assert.match(app, /appApi\.me\(\)\.then\(setUser\)/);
-  assert.match(app, /when=\{user\(\)\}/);
-  assert.match(app, /fallback=\{<Show when=\{authResolved\(\)\}>/);
+  assert.match(app, /data-deez="topnav"/);
+  assert.match(app, /AppSidebar/);
   assert.match(app, /@\{current\(\)\.username/);
   assert.doesNotMatch(appChrome, /current\(\)\.email/);
+  assert.match(appChrome, /data-deez="sidebar"/);
   assert.match(appChrome, /FREE/);
   assert.match(router, /DashboardPage/);
-  assert.match(dashboard, /heroSun/);
-  assert.match(dashboard, /mountainBack/);
+  assert.match(dashboard, /data-deez="dashboard-hero"/);
   assert.match(dashboard, /Study now/);
+  assert.match(dashboard, /Studied today/);
   assert.match(dashboard, /appApi\.listDecks\(\)/);
+  assert.match(main, /neoRetro\.css/);
+  assert.match(main, /neoRetroPublic\.css/);
 });
 
 test("hosted auth converges every historical identity with the same verified email", () => {
@@ -109,7 +112,7 @@ test("Study always performs a document navigation for its route-scoped CSP", () 
 });
 
 test("service worker keeps Study policy out of the generic offline app shell", () => {
-  assert.match(serviceWorker, /const CACHE_VERSION = "deez-plane-v4"/);
+  assert.match(serviceWorker, /const CACHE_VERSION = "deez-plane-v5"/);
   assert.match(serviceWorker, /const STUDY_SHELL = "\/app\/decks\/__deez-study-shell__\/study"/);
   assert.match(serviceWorker, /if \(response\.ok && !study\)/);
   assert.match(serviceWorker, /cache\.put\("\/app", response\.clone\(\)\)/);

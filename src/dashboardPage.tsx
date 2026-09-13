@@ -4,16 +4,17 @@ import { appApi, type Deck } from "./appApi";
 import { AppShell } from "./appChrome";
 import { appStyles as s } from "./appStyles.stylex";
 import { Seo } from "./seo";
+import { UiIcon, type UiIconName } from "./uiIcons";
 
 function message(reason: unknown) {
   return reason instanceof Error ? reason.message : "Something went wrong.";
 }
 
-function deckIcon(deck: Deck) {
+function deckIcon(deck: Deck): UiIconName {
   const name = deck.name.toLowerCase();
-  if (name.includes("aws") || name.includes("cloud")) return "☁";
-  if (name.includes("ssh") || name.includes("linux") || name.includes("terminal")) return ">_";
-  return "▱";
+  if (name.includes("aws") || name.includes("cloud")) return "cloud";
+  if (name.includes("ssh") || name.includes("linux") || name.includes("terminal")) return "terminal";
+  return "card";
 }
 
 function deckTag(deck: Deck) {
@@ -37,72 +38,72 @@ export function DashboardPage() {
   return (
     <AppShell>
       <Seo title="My Deez" description="Your synced Deez study queue." path="/app" noindex />
-      <div {...stylex.attrs(s.dashboard)}>
+      <div {...stylex.attrs(s.dashboard)} data-deez="dashboard">
         <Show when={error()}>{(value) => <div {...stylex.attrs(s.error)}>{value()}</div>}</Show>
 
-        <section {...stylex.attrs(s.dashboardHero)}>
-          <div {...stylex.attrs(s.heroGrid)} />
-          <div {...stylex.attrs(s.heroCopy)}>
-            <p {...stylex.attrs(s.heroKicker)}>Today</p>
+        <section {...stylex.attrs(s.dashboardHero)} data-deez="dashboard-hero">
+          <div {...stylex.attrs(s.heroGrid)} data-deez="hero-grid" />
+          <div {...stylex.attrs(s.heroCopy)} data-deez="hero-copy">
+            <p {...stylex.attrs(s.heroKicker)} data-deez="hero-kicker">Today</p>
             <div {...stylex.attrs(s.heroTitleRow)}>
-              <h1 {...stylex.attrs(s.heroNumber)}>{due()}</h1>
-              <h2 {...stylex.attrs(s.heroTitle)}>cards due</h2>
+              <h1 {...stylex.attrs(s.heroNumber)} data-deez="hero-number">{due()}</h1>
+              <h2 {...stylex.attrs(s.heroTitle)} data-deez="hero-title">cards due</h2>
             </div>
-            <p {...stylex.attrs(s.heroSub)}>Time to build a sharper you.</p>
+            <p {...stylex.attrs(s.heroSub)} data-deez="hero-sub">Time to build a sharper you.</p>
           </div>
 
           <div {...stylex.attrs(s.heroVisual)} aria-hidden="true">
-            <div {...stylex.attrs(s.heroSun)} />
+            <div {...stylex.attrs(s.heroSun)} data-deez="hero-sun" />
             <div {...stylex.attrs(s.mountainBack)} />
             <div {...stylex.attrs(s.mountainFront)} />
             <div {...stylex.attrs(s.horizon)} />
           </div>
 
           <div {...stylex.attrs(s.studyButtonWrap)}>
-            <a {...stylex.attrs(s.studyButton)} href={studyHref()}>▶&nbsp;&nbsp; Study now &nbsp;→</a>
+            <a {...stylex.attrs(s.studyButton)} data-deez="study-button" href={studyHref()}><span>▶</span><span>Study now</span><span>→</span></a>
           </div>
         </section>
 
-        <div {...stylex.attrs(s.sectionHeader)}>
-          <span {...stylex.attrs(s.sectionLabel)}>Due today</span>
-          <a {...stylex.attrs(s.subtleLink)} href="/app/decks">View all nuts&nbsp; →</a>
+        <div {...stylex.attrs(s.sectionHeader)} data-deez="section-header">
+          <span {...stylex.attrs(s.sectionLabel)} data-deez="section-label">Due today</span>
+          <a {...stylex.attrs(s.subtleLink)} data-deez="subtle-link" href="/app/decks">View all nuts&nbsp; →</a>
         </div>
 
-        <div {...stylex.attrs(s.dashboardDeckGrid)}>
+        <div {...stylex.attrs(s.dashboardDeckGrid)} data-deez="deck-grid">
           <For each={dueDecks()} fallback={<div {...stylex.attrs(s.panel)}><strong>You’re caught up.</strong><p {...stylex.attrs(s.muted)}>No cards are due right now.</p></div>}>
             {(deck) => (
-              <a {...stylex.attrs(s.dashboardDeckCard)} href={`/app/decks/${deck.id}/study`}>
-                <div {...stylex.attrs(s.deckIconBox)}>{deckIcon(deck)}</div>
+              <a {...stylex.attrs(s.dashboardDeckCard)} data-deez="deck-card" href={`/app/decks/${deck.id}/study`}>
+                <div {...stylex.attrs(s.deckIconBox)} data-deez="deck-icon"><UiIcon name={deckIcon(deck)} size={42} /></div>
                 <div>
-                  <h3 {...stylex.attrs(s.dashboardDeckTitle)}>{deck.name}</h3>
-                  <p {...stylex.attrs(s.dashboardDeckMeta)}>{deck.due_count} due · {deck.card_count} cards</p>
+                  <h3 {...stylex.attrs(s.dashboardDeckTitle)} data-deez="deck-title">{deck.name}</h3>
+                  <p {...stylex.attrs(s.dashboardDeckMeta)} data-deez="deck-meta">{deck.due_count} due · {deck.card_count} cards</p>
                   <div {...stylex.attrs(s.chipRow)}>
-                    <span {...stylex.attrs(s.chip, s.chipPink)}>{deckTag(deck)}</span>
-                    <span {...stylex.attrs(s.chip)}>PRIVATE</span>
+                    <span {...stylex.attrs(s.chip, s.chipPink)} data-deez="chip" data-accent="true">{deckTag(deck)}</span>
+                    <span {...stylex.attrs(s.chip)} data-deez="chip">PRIVATE</span>
                   </div>
                 </div>
-                <span {...stylex.attrs(s.deckArrow)}>›</span>
+                <span {...stylex.attrs(s.deckArrow)} data-deez="deck-arrow"><UiIcon name="chevron" size={26} /></span>
               </a>
             )}
           </For>
         </div>
 
-        <section {...stylex.attrs(s.statsPanel)} aria-label="Library summary">
-          <div {...stylex.attrs(s.statItem)}>
-            <p {...stylex.attrs(s.statNumber)}>{due()}</p>
-            <div {...stylex.attrs(s.statLabel)}>Due today</div>
+        <section {...stylex.attrs(s.statsPanel)} data-deez="stats" aria-label="Library summary">
+          <div {...stylex.attrs(s.statItem)} data-deez="stat">
+            <UiIcon name="bolt" size={42} class="stat-glyph" />
+            <div><p {...stylex.attrs(s.statNumber)} data-deez="stat-number">{due()}</p><div {...stylex.attrs(s.statLabel)} data-deez="stat-label">Due today</div></div>
           </div>
-          <div {...stylex.attrs(s.statItem)}>
-            <p {...stylex.attrs(s.statNumber)}>{decks().length}</p>
-            <div {...stylex.attrs(s.statLabel)}>Active decks</div>
+          <div {...stylex.attrs(s.statItem)} data-deez="stat">
+            <UiIcon name="layers" size={42} class="stat-glyph" />
+            <div><p {...stylex.attrs(s.statNumber)} data-deez="stat-number">{decks().length}</p><div {...stylex.attrs(s.statLabel)} data-deez="stat-label">Active decks</div></div>
           </div>
-          <div {...stylex.attrs(s.statItem)}>
-            <p {...stylex.attrs(s.statNumber)}>{totalCards()}</p>
-            <div {...stylex.attrs(s.statLabel)}>Total cards</div>
+          <div {...stylex.attrs(s.statItem)} data-deez="stat">
+            <UiIcon name="bars" size={42} class="stat-glyph" />
+            <div><p {...stylex.attrs(s.statNumber)} data-deez="stat-number">{totalCards()}</p><div {...stylex.attrs(s.statLabel)} data-deez="stat-label">Total cards</div></div>
           </div>
-          <div {...stylex.attrs(s.statItem)}>
-            <p {...stylex.attrs(s.statNumber)}>LIVE</p>
-            <div {...stylex.attrs(s.statLabel)}>Cloud library</div>
+          <div {...stylex.attrs(s.statItem)} data-deez="stat">
+            <UiIcon name="calendar" size={42} class="stat-glyph" />
+            <div><p {...stylex.attrs(s.statNumber)} data-deez="stat-number">0</p><div {...stylex.attrs(s.statLabel)} data-deez="stat-label">Studied today</div></div>
           </div>
         </section>
       </div>
