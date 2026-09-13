@@ -14,6 +14,9 @@ const serviceWorker = fs.readFileSync(new URL("../public/sw.js", import.meta.url
 const appApi = fs.readFileSync(new URL("../src/appApi.ts", import.meta.url), "utf8");
 const authPatch = fs.readFileSync(new URL("../patches/patch-hosted-auth.py", import.meta.url), "utf8");
 const dockerfile = fs.readFileSync(new URL("../Dockerfile", import.meta.url), "utf8");
+const app = fs.readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
+const appChrome = fs.readFileSync(new URL("../src/appChrome.tsx", import.meta.url), "utf8");
+const dashboard = fs.readFileSync(new URL("../src/dashboardPage.tsx", import.meta.url), "utf8");
 
 test("local mutations pair entity writes with the durable outbox", () => {
   assert.match(localDb, /putDeckWithOutbox/);
@@ -69,6 +72,20 @@ test("My nuts compares local offline records with the shared account cloud", () 
   assert.match(syncedDecks, /Sync for offline/);
   assert.match(syncedDecks, /visibilitychange/);
   assert.match(syncedDecks, /if \(!buildOfflineCopy \|\| !navigator\.onLine\) return/);
+});
+
+test("signed-in chrome hides Sign in, keeps email out of the sidebar, and uses the retro dashboard", () => {
+  assert.match(app, /appApi\.me\(\)\.then\(setUser\)/);
+  assert.match(app, /when=\{user\(\)\}/);
+  assert.match(app, /fallback=\{<Show when=\{authResolved\(\)\}>/);
+  assert.match(app, /@\{current\(\)\.username/);
+  assert.doesNotMatch(appChrome, /current\(\)\.email/);
+  assert.match(appChrome, /FREE/);
+  assert.match(router, /DashboardPage/);
+  assert.match(dashboard, /heroSun/);
+  assert.match(dashboard, /mountainBack/);
+  assert.match(dashboard, /Study now/);
+  assert.match(dashboard, /appApi\.listDecks\(\)/);
 });
 
 test("hosted auth converges every historical identity with the same verified email", () => {

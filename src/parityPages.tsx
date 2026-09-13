@@ -1,8 +1,10 @@
-import { For, Show, createSignal, type ParentProps } from "solid-js";
+import { For, Show, createSignal } from "solid-js";
 import { useParams } from "@solidjs/router";
 import * as stylex from "@stylexjs/stylex";
-import { ApiError, appApi, type CardDetail, type CardSummary, type Deck, type Note, type Stats, type User } from "./appApi";
+import { appApi, type CardDetail, type CardSummary, type Deck, type Note, type Stats } from "./appApi";
+import { AppShell } from "./appChrome";
 import { appStyles as s } from "./appStyles.stylex";
+import { safeCardMarkup } from "./cardMarkup";
 import {
   importPortableDeck,
   parsePortableDeck,
@@ -16,43 +18,6 @@ import { Seo } from "./seo";
 
 function message(reason: unknown) {
   return reason instanceof Error ? reason.message : "Something went wrong.";
-}
-
-function ParityShell(props: ParentProps) {
-  const [user, setUser] = createSignal<User>();
-  const [authError, setAuthError] = createSignal<string>();
-
-  void appApi.me().then((value) => {
-    setUser(value);
-    if (!value.username && window.location.pathname !== "/app/onboarding") window.location.assign("/app/onboarding");
-  }).catch((reason) => {
-    if (reason instanceof ApiError && reason.status === 401) {
-      window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname)}`);
-      return;
-    }
-    setAuthError(message(reason));
-  });
-
-  return (
-    <div {...stylex.attrs(s.appShell)}>
-      <aside {...stylex.attrs(s.side)}>
-        <Show when={user()} fallback={<p {...stylex.attrs(s.muted)}>Connecting…</p>}>
-          {(current) => <p><strong>@{current().username ?? "new-user"}</strong><br /><span {...stylex.attrs(s.muted)}>{current().email}</span></p>}
-        </Show>
-        <nav {...stylex.attrs(s.sideNav)} aria-label="My Deez">
-          <a {...stylex.attrs(s.sideLink)} href="/app">Today</a>
-          <a {...stylex.attrs(s.sideLink)} href="/app/decks">My nuts</a>
-          <a {...stylex.attrs(s.sideLink)} href="/app/offline">Offline</a>
-          <a {...stylex.attrs(s.sideLink)} href="/app/tools">Tools</a>
-          <a {...stylex.attrs(s.sideLink)} href="/app/settings">Settings</a>
-        </nav>
-      </aside>
-      <div {...stylex.attrs(s.main)}>
-        <Show when={authError()}>{(value) => <div {...stylex.attrs(s.error)}>{value()}</div>}</Show>
-        {props.children}
-      </div>
-    </div>
-  );
 }
 
 function download(filename: string, contents: string, mime: string) {
@@ -155,7 +120,7 @@ export function ToolsPage() {
   }
 
   return (
-    <ParityShell>
+    <AppShell>
       <Seo title="Deez tools" description="Import, export, inspect, and check synced Deez statistics." path="/app/tools" noindex />
       <div {...stylex.attrs(s.topRow)}>
         <div>
@@ -218,7 +183,7 @@ export function ToolsPage() {
           </For>
         </div>
       </section>
-    </ParityShell>
+    </AppShell>
   );
 }
 
@@ -237,7 +202,7 @@ export function DeckCardsPage() {
     .catch((reason) => setError(message(reason)));
 
   return (
-    <ParityShell>
+    <AppShell>
       <Show when={error()}>{(value) => <div {...stylex.attrs(s.error)}>{value()}</div>}</Show>
       <Show when={deck()}>{(value) => (
         <>
@@ -265,7 +230,7 @@ export function DeckCardsPage() {
           </div>
         </>
       )}</Show>
-    </ParityShell>
+    </AppShell>
   );
 }
 
@@ -279,7 +244,7 @@ export function CardInspectPage() {
   const rating = (value: number) => ["", "Again", "Hard", "Good", "Easy"][value] ?? String(value);
 
   return (
-    <ParityShell>
+    <AppShell>
       <Show when={error()}>{(value) => <div {...stylex.attrs(s.error)}>{value()}</div>}</Show>
       <Show when={card()}>{(value) => (
         <>
@@ -293,8 +258,8 @@ export function CardInspectPage() {
           </div>
 
           <div {...stylex.attrs(s.grid)}>
-            <section {...stylex.attrs(s.panel)}><h2>Front</h2><div innerHTML={value().rendered.front} /></section>
-            <section {...stylex.attrs(s.panel)}><h2>Back</h2><div innerHTML={value().rendered.back} /></section>
+            <section {...stylex.attrs(s.panel)}><h2>Front</h2><div innerHTML={safeCardMarkup(value().rendered.front)} /></section>
+            <section {...stylex.attrs(s.panel)}><h2>Back</h2><div innerHTML={safeCardMarkup(value().rendered.back)} /></section>
           </div>
 
           <section {...stylex.attrs(s.panel)} style={{ "margin-top": "16px" }}>
@@ -329,6 +294,6 @@ export function CardInspectPage() {
           </section>
         </>
       )}</Show>
-    </ParityShell>
+    </AppShell>
   );
 }

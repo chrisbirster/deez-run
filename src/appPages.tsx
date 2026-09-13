@@ -1,48 +1,14 @@
-import { For, Show, createSignal, type ParentProps } from "solid-js";
+import { For, Show, createSignal } from "solid-js";
 import { useNavigate, useParams, useSearchParams } from "@solidjs/router";
 import * as stylex from "@stylexjs/stylex";
-import { ApiError, appApi, type Capabilities, type CardDetail, type Deck, type Note, type NoteInput, type StudyPreview, type User } from "./appApi";
+import { appApi, type Capabilities, type CardDetail, type Deck, type Note, type NoteInput, type StudyPreview, type User } from "./appApi";
+import { AppShell } from "./appChrome";
 import { appStyles as s } from "./appStyles.stylex";
 import { styles } from "./siteStyles";
 import { Seo } from "./seo";
 
 function message(reason: unknown) {
   return reason instanceof Error ? reason.message : "Something went wrong.";
-}
-
-function AppShell(props: ParentProps) {
-  const [user, setUser] = createSignal<User>();
-  const [authError, setAuthError] = createSignal<string>();
-  void appApi.me().then((value) => {
-    setUser(value);
-    if (!value.username && window.location.pathname !== "/app/onboarding") window.location.assign("/app/onboarding");
-  }).catch((reason) => {
-    if (reason instanceof ApiError && reason.status === 401) {
-      window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname)}`);
-      return;
-    }
-    setAuthError(message(reason));
-  });
-
-  return (
-    <div {...stylex.attrs(s.appShell)}>
-      <aside {...stylex.attrs(s.side)}>
-        <Show when={user()} fallback={<p {...stylex.attrs(s.muted)}>Connecting…</p>}>
-          {(current) => <p><strong>@{current().username ?? "new-user"}</strong><br /><span {...stylex.attrs(s.muted)}>{current().email}</span></p>}
-        </Show>
-        <nav {...stylex.attrs(s.sideNav)} aria-label="My Deez">
-          <a {...stylex.attrs(s.sideLink)} href="/app">Today</a>
-          <a {...stylex.attrs(s.sideLink)} href="/app/decks">My nuts</a>
-          <a {...stylex.attrs(s.sideLink)} href="/app/settings">Settings</a>
-          <a {...stylex.attrs(s.sideLink)} href="/nuts">Public nuts</a>
-        </nav>
-      </aside>
-      <div {...stylex.attrs(s.main)}>
-        <Show when={authError()}>{(value) => <div {...stylex.attrs(s.error)}>{value()}</div>}</Show>
-        {props.children}
-      </div>
-    </div>
-  );
 }
 
 export function LoginPage() {

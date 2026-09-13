@@ -1,6 +1,5 @@
 import { createRouter } from "@solidjs/router";
 import {
-  AppHomePage,
   DeckPage as MyDeckPage,
   LoginPage,
   MagicLinkPage,
@@ -8,6 +7,7 @@ import {
   OnboardingPage,
   SettingsPage,
 } from "./appPages";
+import { DashboardPage } from "./dashboardPage";
 import { LocalFirstStatusPage } from "./localFirstPages";
 import { CardInspectPage, DeckCardsPage, ToolsPage } from "./parityPages";
 import {
@@ -34,7 +34,7 @@ export const Router = createRouter({
     { path: "/publish", component: PublishPage },
     { path: "/login", component: LoginPage },
     { path: "/auth/magic", component: MagicLinkPage },
-    { path: "/app", component: AppHomePage },
+    { path: "/app", component: DashboardPage },
     { path: "/app/onboarding", component: OnboardingPage },
     { path: "/app/decks", component: SyncedDecksPage },
     { path: "/app/decks/:deckId", component: MyDeckPage },
