@@ -138,7 +138,7 @@ async function putWithOutbox<T>(storeName: string, value: T, outbox: OutboxItem)
   }
 }
 
-async function putImportBatch(deck: LocalDeck, rows: readonly ImportBatchRow[]) {
+async function putImportBatch(deck: LocalDeck, deckOutbox: OutboxItem, rows: readonly ImportBatchRow[]) {
   const database = await db();
   try {
     const transaction = database.transaction([DECKS, NOTES, OUTBOX], "readwrite");
@@ -146,6 +146,7 @@ async function putImportBatch(deck: LocalDeck, rows: readonly ImportBatchRow[]) 
     const notes = transaction.objectStore(NOTES);
     const outbox = transaction.objectStore(OUTBOX);
     decks.put(deck);
+    outbox.put(deckOutbox);
     for (const row of rows) {
       notes.put(row.note);
       outbox.put(row.outbox);
