@@ -86,6 +86,7 @@ test("signed-in chrome hides Sign in, keeps email out of the sidebar, and uses o
   assert.match(app, /@\{current\(\)\.username/);
   assert.doesNotMatch(appChrome, /current\(\)\.email/);
   assert.match(appChrome, /data-deez="sidebar"/);
+  assert.match(appChrome, /data-deez="sidebar-sticky"/);
   assert.match(appChrome, /FREE/);
   assert.match(router, /DashboardPage/);
   assert.match(dashboard, /data-deez="dashboard-hero"/);
@@ -97,6 +98,9 @@ test("signed-in chrome hides Sign in, keeps email out of the sidebar, and uses o
   assert.match(main, /layoutRefine\.css/);
   assert.match(layoutRefine, /grid-template-rows: auto minmax\(0, 1fr\) auto/);
   assert.match(layoutRefine, /\[data-deez="app-shell"\] > \[data-deez="sidebar"\]/);
+  assert.match(layoutRefine, /\[data-deez="public-shell"\] > \[data-deez="sidebar"\]/);
+  assert.match(layoutRefine, /\[data-deez="sidebar-sticky"\]/);
+  assert.match(layoutRefine, /position: sticky !important/);
 });
 
 test("Study uses the neon application controls rather than default form chrome", () => {
@@ -129,7 +133,7 @@ test("Study always performs a document navigation for its route-scoped CSP", () 
 });
 
 test("service worker keeps Study policy out of the generic offline app shell", () => {
-  assert.match(serviceWorker, /const CACHE_VERSION = "deez-plane-v6"/);
+  assert.match(serviceWorker, /const CACHE_VERSION = "deez-plane-v7"/);
   assert.match(serviceWorker, /const STUDY_SHELL = "\/app\/decks\/__deez-study-shell__\/study"/);
   assert.match(serviceWorker, /if \(response\.ok && !study\)/);
   assert.match(serviceWorker, /cache\.put\("\/app", response\.clone\(\)\)/);

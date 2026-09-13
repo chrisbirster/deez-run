@@ -23,28 +23,30 @@ function active(path: string) {
 export function AppSidebar(props: { user?: User; loading?: boolean }) {
   return (
     <aside {...stylex.attrs(s.side)} data-deez="sidebar">
-      <Show when={props.user} fallback={<p {...stylex.attrs(s.muted)}>{props.loading === false ? "Your Deez" : "Connecting…"}</p>}>
-        {(current) => (
-          <div {...stylex.attrs(s.profileBlock)} data-deez="profile">
-            <div {...stylex.attrs(s.avatar)} data-deez="profile-avatar">{initials(current().username)}</div>
-            <div>
-              <div {...stylex.attrs(s.profileName)} data-deez="profile-name">@{current().username ?? "new-user"}</div>
-              <span {...stylex.attrs(s.planBadge)} data-deez="plan">FREE</span>
+      <div data-deez="sidebar-sticky">
+        <Show when={props.user} fallback={<p {...stylex.attrs(s.muted)}>{props.loading === false ? "Your Deez" : "Connecting…"}</p>}>
+          {(current) => (
+            <div {...stylex.attrs(s.profileBlock)} data-deez="profile">
+              <div {...stylex.attrs(s.avatar)} data-deez="profile-avatar">{initials(current().username)}</div>
+              <div>
+                <div {...stylex.attrs(s.profileName)} data-deez="profile-name">@{current().username ?? "new-user"}</div>
+                <span {...stylex.attrs(s.planBadge)} data-deez="plan">FREE</span>
+              </div>
             </div>
-          </div>
-        )}
-      </Show>
+          )}
+        </Show>
 
-      <nav {...stylex.attrs(s.sideNav)} data-deez="side-nav" aria-label="My Deez">
-        <a {...stylex.attrs(s.sideLink, active("/app") && s.sideLinkActive)} data-deez="side-link" data-active={active("/app") ? "true" : "false"} href="/app"><UiIcon name="home" /> <span>Today</span></a>
-        <a {...stylex.attrs(s.sideLink, active("/app/decks") && s.sideLinkActive)} data-deez="side-link" data-active={active("/app/decks") ? "true" : "false"} href="/app/decks"><UiIcon name="card" /> <span>My nuts</span></a>
-        <a {...stylex.attrs(s.sideLink, active("/app/settings") && s.sideLinkActive)} data-deez="side-link" data-active={active("/app/settings") ? "true" : "false"} href="/app/settings"><UiIcon name="settings" /> <span>Settings</span></a>
-        <a {...stylex.attrs(s.sideLink, active("/nuts") && s.sideLinkActive)} data-deez="side-link" data-active={active("/nuts") ? "true" : "false"} href="/nuts"><UiIcon name="globe" /> <span>Public nuts</span></a>
-      </nav>
+        <nav {...stylex.attrs(s.sideNav)} data-deez="side-nav" aria-label="My Deez">
+          <a {...stylex.attrs(s.sideLink, active("/app") && s.sideLinkActive)} data-deez="side-link" data-active={active("/app") ? "true" : "false"} href="/app"><UiIcon name="home" /> <span>Today</span></a>
+          <a {...stylex.attrs(s.sideLink, active("/app/decks") && s.sideLinkActive)} data-deez="side-link" data-active={active("/app/decks") ? "true" : "false"} href="/app/decks"><UiIcon name="card" /> <span>My nuts</span></a>
+          <a {...stylex.attrs(s.sideLink, active("/app/settings") && s.sideLinkActive)} data-deez="side-link" data-active={active("/app/settings") ? "true" : "false"} href="/app/settings"><UiIcon name="settings" /> <span>Settings</span></a>
+          <a {...stylex.attrs(s.sideLink, active("/nuts") && s.sideLinkActive)} data-deez="side-link" data-active={active("/nuts") ? "true" : "false"} href="/nuts"><UiIcon name="globe" /> <span>Public nuts</span></a>
+        </nav>
 
-      <div {...stylex.attrs(s.quoteCard)} data-deez="quote" aria-hidden="true">
-        <div {...stylex.attrs(s.quoteText)} data-deez="quote-text">“Small cards.<br />Big progress.”</div>
-        <div {...stylex.attrs(s.quoteByline)} data-deez="quote-byline">— deez.run</div>
+        <div {...stylex.attrs(s.quoteCard)} data-deez="quote" aria-hidden="true">
+          <div {...stylex.attrs(s.quoteText)} data-deez="quote-text">“Small cards.<br />Big progress.”</div>
+          <div {...stylex.attrs(s.quoteByline)} data-deez="quote-byline">— deez.run</div>
+        </div>
       </div>
     </aside>
   );
