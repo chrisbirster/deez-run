@@ -27,7 +27,6 @@ export function UiIcon(props: { name: UiIconName; size?: number; class?: string 
     "stroke-width": 1.9,
     "stroke-linecap": "round" as const,
     "stroke-linejoin": "round" as const,
-    "aria-hidden": true,
     class: props.class,
   };
 
