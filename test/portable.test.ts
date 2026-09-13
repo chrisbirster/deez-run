@@ -34,11 +34,7 @@ test(".nut v2 round trips logical reverse and cloze notes", () => {
 });
 
 test("deez.deck v1 remains compatible", () => {
-  const parsed = parseDeckJson(JSON.stringify({
-    format: "deez.deck",
-    version: 1,
-    deck: { name: "Legacy JSON", cards: [{ question: "byte", answer: "8 bits" }] },
-  }));
+  const parsed = parseDeckJson(JSON.stringify({ format: "deez.deck", version: 1, deck: { name: "Legacy JSON", cards: [{ question: "byte", answer: "8 bits" }] } }));
   assert.equal(parsed.source, "json-v1");
   assert.deepEqual(parsed.notes, [{ note_type: "basic", fields: ["byte", "8 bits"], tags: [] }]);
 });
@@ -53,20 +49,13 @@ test("deez.deck v2 round trips logical notes without scheduler state", () => {
 });
 
 test("portable parsers reject unknown fields rather than silently dropping them", () => {
-  assert.throws(() => parseNut([
-    JSON.stringify({ kind: "deck", format: "deez.nut", version: 2, name: "Strict", surprise: true }),
-  ].join("\n")), /unknown field surprise/);
-
-  assert.throws(() => parseDeckJson(JSON.stringify({
-    format: "deez.deck",
-    version: 2,
-    deck: { name: "Strict", notes: [], surprise: true },
-  })), /unknown field surprise/);
+  assert.throws(() => parseNut([JSON.stringify({ kind: "deck", format: "deez.nut", version: 2, name: "Strict", surprise: true })].join("\n")), /unknown field surprise/);
+  assert.throws(() => parseDeckJson(JSON.stringify({ format: "deez.deck", version: 2, deck: { name: "Strict", notes: [], surprise: true } })), /unknown field surprise/);
 });
 
-test("portable import rolls back a partially-created hosted deck", async () => {
+test("portable import preserves a partially-created deck when one note is rejected", async () => {
   const parsed: PortableDeck = {
-    name: "Rollback",
+    name: "Recoverable",
     source: "nut-v2",
     notes: [
       { note_type: "basic", fields: ["one", "1"], tags: [] },
@@ -82,5 +71,20 @@ test("portable import rolls back a partially-created hosted deck", async () => {
     },
     async deleteDeck(id) { events.push(`delete:${id}`); },
   }), /server rejected note/);
-  assert.deepEqual(events, ["deck:Rollback", "note:one", "note:two", "delete:42"]);
+  assert.deepEqual(events, ["deck:Recoverable", "note:one", "note:two"]);
+});
+
+test("1200-note .nut fixture parses and preserves exact logical-note count", () => {
+  const notes = Array.from({ length: 1_200 }, (_, index) => ({
+    note_type: "basic",
+    fields: [`Question ${index + 1}`, `Answer ${index + 1}`],
+    tags: index === 777 ? ["fixture", "invalid-on-server"] : ["fixture"],
+  }));
+  const encoded = serializeNutV2("Large fixture", notes);
+  const started = performance.now();
+  const parsed = parseNut(encoded);
+  const elapsed = performance.now() - started;
+  assert.equal(parsed.notes.length, 1_200);
+  assert.deepEqual(parsed.notes[777], notes[777]);
+  assert.ok(elapsed < 1_000, `1200-note parse took ${elapsed.toFixed(1)}ms`);
 });
