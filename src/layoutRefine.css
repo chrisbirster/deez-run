@@ -48,6 +48,36 @@ body {
   align-self: stretch !important;
 }
 
+/* The rail itself follows the entire grid track. Its contents stay pinned to
+   the viewport, so a long public listing does not leave a short floating card
+   on the left while the right column continues for several screens. */
+[data-deez="public-shell"] {
+  min-height: 100% !important;
+  height: auto !important;
+  align-items: stretch !important;
+}
+
+[data-deez="public-shell"] > [data-deez="sidebar"] {
+  min-height: 100% !important;
+  height: auto !important;
+  position: relative !important;
+  top: auto !important;
+  align-self: stretch !important;
+}
+
+[data-deez="sidebar-sticky"] {
+  min-height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 14px !important;
+}
+
+[data-deez="public-shell"] > [data-deez="sidebar"] > [data-deez="sidebar-sticky"] {
+  min-height: calc(100dvh - 24px) !important;
+  position: sticky !important;
+  top: 12px !important;
+}
+
 [data-deez="main"] {
   min-height: 100% !important;
   height: 100% !important;
@@ -293,9 +323,16 @@ body {
     min-height: 0 !important;
   }
 
-  [data-deez="app-shell"] > [data-deez="sidebar"] {
+  [data-deez="app-shell"] > [data-deez="sidebar"],
+  [data-deez="public-shell"] > [data-deez="sidebar"] {
     height: auto !important;
     min-height: 0 !important;
+    position: static !important;
+  }
+
+  [data-deez="sidebar-sticky"] {
+    min-height: 0 !important;
+    position: static !important;
   }
 
   [data-deez="main"] {
