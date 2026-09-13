@@ -1,0 +1,110 @@
+[data-deez="stat"] .stat-glyph {
+  color: #c06bff;
+  filter: drop-shadow(0 0 9px rgba(157, 84, 255, 0.18));
+}
+
+[data-deez="stat"]:first-child .stat-glyph {
+  color: #ff48c8;
+  filter: drop-shadow(0 0 11px rgba(255, 63, 196, 0.26));
+}
+
+[data-deez="public-content"] > section,
+[data-deez="public-content"] > article {
+  min-height: 0 !important;
+  padding: 8px 0 26px !important;
+}
+
+[data-deez="public-content"] > section > p:first-of-type,
+[data-deez="public-content"] > article > p:first-of-type {
+  color: #ff5dce !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.2em !important;
+  text-transform: uppercase !important;
+}
+
+[data-deez="public-content"] > section > h1,
+[data-deez="public-content"] > article > h1 {
+  margin: 8px 0 12px !important;
+  max-width: none !important;
+  color: #f9f7ff !important;
+  font-size: clamp(48px, 5vw, 76px) !important;
+  line-height: 0.96 !important;
+  letter-spacing: -0.055em !important;
+}
+
+[data-deez="public-content"] > section > h1 + p,
+[data-deez="public-content"] > article > h1 + p {
+  max-width: 920px !important;
+  color: #959dc8 !important;
+  font-size: 18px !important;
+  line-height: 1.55 !important;
+}
+
+[data-deez="public-content"] > section > div:last-child,
+[data-deez="public-content"] > section > div:has(> article) {
+  margin-top: 22px !important;
+}
+
+[data-deez="public-content"] article {
+  color: #f8f6ff !important;
+  border-color: rgba(112, 76, 255, 0.48) !important;
+  background: linear-gradient(180deg, rgba(10, 16, 36, 0.985), rgba(7, 11, 27, 0.985)) !important;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.012), 0 16px 34px rgba(0,0,0,0.18) !important;
+}
+
+[data-deez="public-content"] article:hover {
+  border-color: rgba(255, 63, 196, 0.7) !important;
+}
+
+[data-deez="public-content"] article h2,
+[data-deez="public-content"] article h2 a {
+  color: #faf8ff !important;
+}
+
+[data-deez="public-content"] article > div:first-child {
+  color: #ff5ccc !important;
+}
+
+[data-deez="public-content"] article p {
+  color: #9aa3cd !important;
+}
+
+[data-deez="public-content"] article a {
+  color: #d3d5ff !important;
+}
+
+[data-deez="public-content"] article a:hover {
+  color: #ff73d3 !important;
+}
+
+[data-deez="public-content"] article span {
+  border: 1px solid rgba(92, 91, 162, 0.55) !important;
+  color: #c5c9eb !important;
+  background: #0c1329 !important;
+}
+
+[data-deez="public-content"] input,
+[data-deez="public-content"] textarea,
+[data-deez="public-content"] select {
+  color: #f7f4ff !important;
+  border-color: rgba(104, 82, 204, 0.52) !important;
+  background: #080e20 !important;
+}
+
+[data-deez="public-content"] pre,
+[data-deez="public-content"] code {
+  color: #e8e6ff !important;
+}
+
+[data-deez="public-content"] .surface,
+[data-deez="public-content"] section {
+  color: #f8f6ff;
+}
+
+@media (max-width: 900px) {
+  [data-deez="public-content"] > section > h1,
+  [data-deez="public-content"] > article > h1 {
+    font-size: clamp(42px, 11vw, 68px) !important;
+  }
+}
