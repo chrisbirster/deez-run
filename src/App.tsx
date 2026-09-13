@@ -1,12 +1,21 @@
 import { Show, createSignal, type ParentProps } from "solid-js";
 import * as stylex from "@stylexjs/stylex";
 import { appApi, type User } from "./appApi";
+import { AppSidebar } from "./appChrome";
 import { Router } from "./router";
 import { styles } from "./siteStyles";
+import { UiIcon } from "./uiIcons";
 
 function initials(username?: string | null) {
   const value = (username ?? "dz").replace(/[^a-z0-9]/gi, "").slice(0, 2);
   return (value || "dz").toUpperCase();
+}
+
+function topActive(path: string) {
+  const current = window.location.pathname;
+  if (path === "/nuts") return current === "/nuts" || current.startsWith("/nuts/");
+  if (path === "/app") return current.startsWith("/app");
+  return current === path || current.startsWith(`${path}/`);
 }
 
 function Layout(props: ParentProps) {
@@ -15,40 +24,39 @@ function Layout(props: ParentProps) {
 
   void appApi.me().then(setUser).catch(() => undefined).finally(() => setAuthResolved(true));
 
+  const appRoute = () => window.location.pathname.startsWith("/app");
+  const authRoute = () => window.location.pathname === "/login" || window.location.pathname.startsWith("/auth/");
+  const usePublicSidebar = () => Boolean(user()) && !appRoute() && !authRoute();
+
+  const nav = [
+    ["/nuts", "layers", "Nuts"],
+    ["/search", "search", "Search"],
+    ["/docs", "book", "Docs"],
+    ["/publish", "rocket", "Publish"],
+    ["/app", "card", "My Deez"],
+    ["/app/offline", "offline", "Offline"],
+    ["/app/tools", "tools", "Tools"],
+  ] as const;
+
   return (
-    <div {...stylex.attrs(styles.page)}>
-      <div {...stylex.attrs(styles.shell)}>
-        <header {...stylex.attrs(styles.header)}>
-          <a
-            {...stylex.attrs(styles.brand)}
-            href="/"
-            aria-label="deez.run home"
-            style={{
-              color: "#ff4fc3",
-              "font-family": "'Brush Script MT', 'Segoe Script', cursive",
-              "font-size": "38px",
-              "font-weight": "800",
-              "text-shadow": "0 0 24px rgba(255,79,195,0.35)",
-              transform: "rotate(-2deg)",
-            }}
-          >
-            deez.run
-          </a>
+    <div {...stylex.attrs(styles.page)} data-deez="page">
+      <div {...stylex.attrs(styles.shell)} data-deez="shell">
+        <header {...stylex.attrs(styles.header)} data-deez="header">
+          <a {...stylex.attrs(styles.brand)} data-deez="brand" href="/" aria-label="deez.run home">deez.run</a>
 
-          <nav {...stylex.attrs(styles.nav)} aria-label="Primary navigation">
-            <a {...stylex.attrs(styles.navLink)} href="/nuts">Nuts</a>
-            <a {...stylex.attrs(styles.navLink)} href="/search">Search</a>
-            <a {...stylex.attrs(styles.navLink)} href="/docs">Docs</a>
-            <a {...stylex.attrs(styles.navLink)} href="/publish">Publish</a>
-            <a {...stylex.attrs(styles.navLink)} href="/app">My Deez</a>
-            <a {...stylex.attrs(styles.navLink)} href="/app/offline">Offline</a>
-            <a {...stylex.attrs(styles.navLink)} href="/app/tools">Tools</a>
+          <nav {...stylex.attrs(styles.nav)} data-deez="topnav" aria-label="Primary navigation">
+            {nav.map(([href, icon, label]) => (
+              <a {...stylex.attrs(styles.navLink)} data-deez="navlink" data-active={topActive(href) ? "true" : "false"} href={href}>
+                <UiIcon name={icon} />
+                <span>{label}</span>
+              </a>
+            ))}
 
-            <Show when={user()} fallback={<Show when={authResolved()}><a {...stylex.attrs(styles.navLink)} href="/login">Sign in</a></Show>}>
+            <Show when={user()} fallback={<Show when={authResolved()}><a {...stylex.attrs(styles.navLink)} data-deez="navlink" href="/login">Sign in</a></Show>}>
               {(current) => (
-                <a {...stylex.attrs(styles.accountLink)} href="/app/settings" aria-label="Account settings">
-                  <span {...stylex.attrs(styles.accountAvatar)}>{initials(current().username)}</span>
-                  <span {...stylex.attrs(styles.accountName)}>@{current().username ?? "new-user"}</span>
+                <a {...stylex.attrs(styles.accountLink)} data-deez="account" href="/app/settings" aria-label="Account settings">
+                  <span {...stylex.attrs(styles.accountAvatar)} data-deez="account-avatar">{initials(current().username)}</span>
+                  <span {...stylex.attrs(styles.accountName)} data-deez="account-name">@{current().username ?? "new-user"}</span>
                   <span aria-hidden="true">▾</span>
                 </a>
               )}
@@ -56,11 +64,16 @@ function Layout(props: ParentProps) {
           </nav>
         </header>
 
-        <main>{props.children}</main>
+        <Show when={usePublicSidebar()} fallback={<main>{props.children}</main>}>
+          <main data-deez="public-shell">
+            <AppSidebar user={user()} loading={!authResolved()} />
+            <div data-deez="public-content">{props.children}</div>
+          </main>
+        </Show>
 
-        <footer {...stylex.attrs(styles.footer)}>
-          <p>deez.run · flashcards for a sharper you.</p>
-          <a href="https://github.com/chrisbirster/deez-run">Source</a>
+        <footer {...stylex.attrs(styles.footer)} data-deez="footer">
+          <div><strong>deez.run</strong>&nbsp;&nbsp;│&nbsp;&nbsp;Flashcards for a sharper you.</div>
+          <div>Learn&nbsp;&nbsp; · &nbsp;&nbsp;Remember&nbsp;&nbsp; · &nbsp;&nbsp;Build&nbsp;&nbsp; · &nbsp;&nbsp;Repeat</div>
         </footer>
       </div>
     </div>
