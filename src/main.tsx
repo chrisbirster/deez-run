@@ -3,6 +3,7 @@ import App from "./App";
 import { replicateNow, replicationStatus } from "./localReplication";
 import "./reset.css";
 import "./neoRetro.css";
+import "./neoRetroPublic.css";
 
 function forceStudyDocumentNavigation(event: MouseEvent) {
   if (
