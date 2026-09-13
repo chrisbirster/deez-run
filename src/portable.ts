@@ -13,15 +13,14 @@ export type PortableDeck = {
 export type PortableImportAdapter<TDeck extends { id: string }> = {
   createDeck(name: string): Promise<TDeck>;
   createNote(deckId: string, note: PortableNote): Promise<unknown>;
-  deleteDeck(deckId: string): Promise<unknown>;
+  /** @deprecated Kept for source compatibility. Imports never auto-delete recoverable data. */
+  deleteDeck?(deckId: string): Promise<unknown>;
 };
 
 type JsonObject = Record<string, unknown>;
 
 function asObject(value: unknown, context: string): JsonObject {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error(`${context} must be a JSON object.`);
-  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${context} must be a JSON object.`);
   return value as JsonObject;
 }
 
@@ -37,9 +36,7 @@ function nonEmptyText(value: unknown, name: string) {
 }
 
 function stringArray(value: unknown, name: string, allowEmpty = true): string[] {
-  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
-    throw new Error(`${name} must be an array of strings.`);
-  }
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) throw new Error(`${name} must be an array of strings.`);
   if (!allowEmpty && value.length === 0) throw new Error(`${name} must contain at least one value.`);
   return [...value] as string[];
 }
@@ -53,41 +50,34 @@ function tagsJson(value: unknown): string[] {
 
 function noteFromObject(value: JsonObject, context: string): PortableNote {
   expectKeys(value, ["kind", "note_type", "fields", "tags_json"], context);
-  const noteType = nonEmptyText(value.note_type, `${context} note_type`);
-  const fields = stringArray(value.fields, `${context} fields`, false);
-  return { note_type: noteType, fields, tags: tagsJson(value.tags_json) };
+  return {
+    note_type: nonEmptyText(value.note_type, `${context} note_type`),
+    fields: stringArray(value.fields, `${context} fields`, false),
+    tags: tagsJson(value.tags_json),
+  };
 }
 
 export function parseNut(source: string): PortableDeck {
   const lines = source.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   if (!lines.length) throw new Error("The .nut file is empty.");
-
   const header = asObject(JSON.parse(lines[0]), ".nut header");
   expectKeys(header, ["kind", "format", "version", "name"], ".nut header");
-  if (header.kind !== "deck" || header.format !== "deez.nut") {
-    throw new Error("The first .nut record must be a deez.nut deck header.");
-  }
+  if (header.kind !== "deck" || header.format !== "deez.nut") throw new Error("The first .nut record must be a deez.nut deck header.");
   if (header.version !== 1 && header.version !== 2) throw new Error("Only .nut versions 1 and 2 are supported.");
   const name = nonEmptyText(header.name, "Deck name");
   const notes: PortableNote[] = [];
-
   for (const [offset, line] of lines.slice(1).entries()) {
     const context = `.nut record ${offset + 2}`;
     const value = asObject(JSON.parse(line), context);
     if (header.version === 1) {
       expectKeys(value, ["kind", "question", "answer"], context);
       if (value.kind !== "card") throw new Error("A .nut v1 deck may only contain card records after the header.");
-      notes.push({
-        note_type: "basic",
-        fields: [nonEmptyText(value.question, "Question"), nonEmptyText(value.answer, "Answer")],
-        tags: [],
-      });
+      notes.push({ note_type: "basic", fields: [nonEmptyText(value.question, "Question"), nonEmptyText(value.answer, "Answer")], tags: [] });
       continue;
     }
     if (value.kind !== "note") throw new Error("A .nut v2 deck may only contain note records after the header.");
     notes.push(noteFromObject(value, context));
   }
-
   return { name, notes, source: header.version === 1 ? "nut-v1" : "nut-v2" };
 }
 
@@ -97,7 +87,6 @@ export function parseDeckJson(source: string): PortableDeck {
   if (root.format !== "deez.deck") throw new Error("JSON deck format must be deez.deck.");
   if (root.version !== 1 && root.version !== 2) throw new Error("Only deez.deck versions 1 and 2 are supported.");
   const deck = asObject(root.deck, "deck");
-
   if (root.version === 1) {
     expectKeys(deck, ["name", "cards"], "deck");
     const name = nonEmptyText(deck.name, "Deck name");
@@ -105,15 +94,10 @@ export function parseDeckJson(source: string): PortableDeck {
     const notes = deck.cards.map((raw, index): PortableNote => {
       const card = asObject(raw, `card ${index + 1}`);
       expectKeys(card, ["question", "answer"], `card ${index + 1}`);
-      return {
-        note_type: "basic",
-        fields: [nonEmptyText(card.question, "Question"), nonEmptyText(card.answer, "Answer")],
-        tags: [],
-      };
+      return { note_type: "basic", fields: [nonEmptyText(card.question, "Question"), nonEmptyText(card.answer, "Answer")], tags: [] };
     });
     return { name, notes, source: "json-v1" };
   }
-
   expectKeys(deck, ["name", "notes"], "deck");
   const name = nonEmptyText(deck.name, "Deck name");
   if (!Array.isArray(deck.notes)) throw new Error("deck.notes must be an array.");
@@ -129,37 +113,25 @@ export function parsePortableDeck(source: string, filename = "") {
   const trimmed = source.trimStart();
   if (filename.toLowerCase().endsWith(".nut")) return parseNut(source);
   if (filename.toLowerCase().endsWith(".json")) return parseDeckJson(source);
-  if (trimmed.startsWith("{\"kind\"") || /\"format\"\s*:\s*\"deez\.nut\"/.test(trimmed.split(/\r?\n/, 1)[0] ?? "")) {
-    return parseNut(source);
-  }
+  if (trimmed.startsWith("{\"kind\"") || /\"format\"\s*:\s*\"deez\.nut\"/.test(trimmed.split(/\r?\n/, 1)[0] ?? "")) return parseNut(source);
   return parseDeckJson(source);
 }
 
-export async function importPortableDeck<TDeck extends { id: string }>(
-  parsed: PortableDeck,
-  adapter: PortableImportAdapter<TDeck>,
-): Promise<TDeck> {
-  let created: TDeck | undefined;
-  try {
-    created = await adapter.createDeck(parsed.name);
-    for (const note of parsed.notes) await adapter.createNote(created.id, note);
-    return created;
-  } catch (reason) {
-    if (created) await adapter.deleteDeck(created.id).catch(() => undefined);
-    throw reason;
-  }
+/**
+ * Compatibility importer for small integrations. A failed note never triggers
+ * an automatic deck deletion: preserving successfully-created data is safer
+ * than a best-effort rollback that can race replication. The hosted UI uses
+ * importPortableDeckAtomic for one-transaction local persistence + progress.
+ */
+export async function importPortableDeck<TDeck extends { id: string }>(parsed: PortableDeck, adapter: PortableImportAdapter<TDeck>): Promise<TDeck> {
+  const created = await adapter.createDeck(parsed.name);
+  for (const note of parsed.notes) await adapter.createNote(created.id, note);
+  return created;
 }
 
 export function serializeNutV2(name: string, notes: readonly PortableNote[]) {
   const lines = [JSON.stringify({ kind: "deck", format: "deez.nut", version: 2, name })];
-  for (const note of notes) {
-    lines.push(JSON.stringify({
-      kind: "note",
-      note_type: note.note_type,
-      fields: note.fields,
-      tags_json: JSON.stringify(note.tags),
-    }));
-  }
+  for (const note of notes) lines.push(JSON.stringify({ kind: "note", note_type: note.note_type, fields: note.fields, tags_json: JSON.stringify(note.tags) }));
   return `${lines.join("\n")}\n`;
 }
 
@@ -167,14 +139,7 @@ export function serializeDeckJsonV2(name: string, notes: readonly PortableNote[]
   return `${JSON.stringify({
     format: "deez.deck",
     version: 2,
-    deck: {
-      name,
-      notes: notes.map((note) => ({
-        note_type: note.note_type,
-        fields: note.fields,
-        tags_json: JSON.stringify(note.tags),
-      })),
-    },
+    deck: { name, notes: notes.map((note) => ({ note_type: note.note_type, fields: note.fields, tags_json: JSON.stringify(note.tags) })) },
   }, null, 2)}\n`;
 }
 
