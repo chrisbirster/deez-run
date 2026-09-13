@@ -1,7 +1,8 @@
-import { For, Show, createSignal, onCleanup, type ParentProps } from "solid-js";
+import { For, Show, createSignal, onCleanup } from "solid-js";
 import { useParams } from "@solidjs/router";
 import * as stylex from "@stylexjs/stylex";
-import { ApiError, appApi, type CardDetail, type StudyNextOptions, type StudyPreview, type User } from "./appApi";
+import { appApi, type CardDetail, type StudyNextOptions, type StudyPreview } from "./appApi";
+import { AppShell } from "./appChrome";
 import { appStyles as s } from "./appStyles.stylex";
 import { safeCardMarkup } from "./cardMarkup";
 import { styles } from "./siteStyles";
@@ -9,35 +10,6 @@ import { Seo } from "./seo";
 
 function message(reason: unknown) {
   return reason instanceof Error ? reason.message : "Something went wrong.";
-}
-
-function StudyShell(props: ParentProps) {
-  const [user, setUser] = createSignal<User>();
-  const [authError, setAuthError] = createSignal<string>();
-  void appApi.me().then((value) => {
-    setUser(value);
-    if (!value.username) window.location.assign("/app/onboarding");
-  }).catch((reason) => {
-    if (reason instanceof ApiError && reason.status === 401) {
-      window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname)}`);
-      return;
-    }
-    setAuthError(message(reason));
-  });
-
-  return <div {...stylex.attrs(s.appShell)}>
-    <aside {...stylex.attrs(s.side)}>
-      <Show when={user()} fallback={<p {...stylex.attrs(s.muted)}>Connecting…</p>}>{(current) => <p><strong>@{current().username ?? "new-user"}</strong><br /><span {...stylex.attrs(s.muted)}>{current().email}</span></p>}</Show>
-      <nav {...stylex.attrs(s.sideNav)} aria-label="My Deez">
-        <a {...stylex.attrs(s.sideLink)} href="/app">Today</a>
-        <a {...stylex.attrs(s.sideLink)} href="/app/decks">My nuts</a>
-        <a {...stylex.attrs(s.sideLink)} href="/app/offline">Offline</a>
-        <a {...stylex.attrs(s.sideLink)} href="/app/tools">Tools</a>
-        <a {...stylex.attrs(s.sideLink)} href="/app/settings">Settings</a>
-      </nav>
-    </aside>
-    <div {...stylex.attrs(s.main)}><Show when={authError()}>{(value) => <div {...stylex.attrs(s.error)}>{value()}</div>}</Show>{props.children}</div>
-  </div>;
 }
 
 function interval(days: number) {
@@ -132,7 +104,7 @@ export function HostedStudyPage() {
   void next();
   const labels: Array<[1 | 2 | 3 | 4, "again" | "hard" | "good" | "easy", string]> = [[1, "again", "Again"], [2, "hard", "Hard"], [3, "good", "Good"], [4, "easy", "Easy"]];
 
-  return <StudyShell>
+  return <AppShell>
     <Seo title="Study" description="Study your synced Deez deck." path={`/app/decks/${deckId()}/study`} noindex />
     <div {...stylex.attrs(s.topRow)}><div><a href={`/app/decks/${deckId()}`}>← Deck</a><h1 {...stylex.attrs(s.appHeading)}>Study</h1><p {...stylex.attrs(s.muted)}>Space/Enter reveals · 1 Again · 2 Hard · 3 Good · 4 Easy</p></div><a {...stylex.attrs(styles.button, styles.buttonSecondary)} href={`/app/decks/${deckId()}/cards`}>Inspect cards</a></div>
     <Show when={error()}>{(value) => <div {...stylex.attrs(s.error)}>{value()}</div>}</Show>
@@ -154,5 +126,5 @@ export function HostedStudyPage() {
         <Show when={done()} fallback={<Show when={card()}>{(current) => <><section {...stylex.attrs(s.studyCard)}><div {...stylex.attrs(s.studyFace)} innerHTML={safeCardMarkup(revealed() ? current().rendered.back : current().rendered.front)} /><Show when={!revealed() && current().rendered.interaction.type === "type_answer"}><label {...stylex.attrs(s.field)} style={{ width: "100%" }}><span {...stylex.attrs(s.label)}>Your answer</span><input {...stylex.attrs(s.input)} value={typedAnswer()} autocomplete="off" autocapitalize="off" onInput={(event) => setTypedAnswer(event.currentTarget.value)} /></label></Show><Show when={revealed() && current().rendered.interaction.type === "type_answer" && typedAnswer().trim()}><p {...stylex.attrs(s.muted)}>Your answer: {typedAnswer()}</p></Show><Show when={!revealed()}><button {...stylex.attrs(styles.button)} onClick={() => setRevealed(true)}>Show answer</button></Show></section><Show when={revealed() && preview()}>{(schedule) => <div {...stylex.attrs(s.ratingGrid)}><For each={labels}>{([ratingValue, key, label]) => <button {...stylex.attrs(styles.button, styles.buttonSecondary)} disabled={busy()} onClick={() => void rate(ratingValue)}><span>{ratingValue} {label}</span>&nbsp;<small>{interval(schedule().schedule[key].interval_days)}</small></button>}</For></div>}</Show></>}</Show>}><div {...stylex.attrs(s.panel)}><h2>All caught up.</h2><p {...stylex.attrs(s.muted)}>No cards remain under the current session controls.</p><div {...stylex.attrs(s.actions)}><button {...stylex.attrs(styles.button, styles.buttonSecondary)} onClick={() => void restart()}>Restart session</button><a {...stylex.attrs(styles.button)} href={`/app/decks/${deckId()}`}>Back to deck</a></div></div></Show>
       </Show>
     </div>
-  </StudyShell>;
+  </AppShell>;
 }
