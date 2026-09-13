@@ -19,9 +19,20 @@ function Layout(props: ParentProps) {
     <div {...stylex.attrs(styles.page)}>
       <div {...stylex.attrs(styles.shell)}>
         <header {...stylex.attrs(styles.header)}>
-          <a {...stylex.attrs(styles.brand)} href="/" aria-label="deez.run home">
-            <span {...stylex.attrs(styles.brandMark)}>dz</span>
-            <span>deez.run</span>
+          <a
+            {...stylex.attrs(styles.brand)}
+            href="/"
+            aria-label="deez.run home"
+            style={{
+              color: "#ff4fc3",
+              "font-family": "'Brush Script MT', 'Segoe Script', cursive",
+              "font-size": "38px",
+              "font-weight": "800",
+              "text-shadow": "0 0 24px rgba(255,79,195,0.35)",
+              transform: "rotate(-2deg)",
+            }}
+          >
+            deez.run
           </a>
 
           <nav {...stylex.attrs(styles.nav)} aria-label="Primary navigation">
