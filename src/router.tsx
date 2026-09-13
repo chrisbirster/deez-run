@@ -9,7 +9,8 @@ import {
 } from "./appPages";
 import { DashboardPage } from "./dashboardPage";
 import { LocalFirstStatusPage } from "./localFirstPages";
-import { CardInspectPage, DeckCardsPage, ToolsPage } from "./parityPages";
+import { CardInspectPage, DeckCardsPage } from "./parityPages";
+import { ToolsPage } from "./toolsPage";
 import {
   AuthorPage,
   DocsPage,
