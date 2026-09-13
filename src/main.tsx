@@ -2,6 +2,7 @@ import { render } from "@solidjs/web";
 import App from "./App";
 import { replicateNow, replicationStatus } from "./localReplication";
 import "./reset.css";
+import "./neoRetro.css";
 
 function forceStudyDocumentNavigation(event: MouseEvent) {
   if (
