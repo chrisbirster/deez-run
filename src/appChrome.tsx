@@ -1,4 +1,5 @@
 import { Show, createSignal, type ParentProps } from "solid-js";
+import { useLocation } from "@solidjs/router";
 import * as stylex from "@stylexjs/stylex";
 import { ApiError, appApi, type User } from "./appApi";
 import { appStyles as s } from "./appStyles.stylex";
@@ -13,14 +14,16 @@ function initials(username?: string | null) {
   return (value || "dz").toUpperCase();
 }
 
-function active(path: string) {
-  const current = window.location.pathname;
+function active(path: string, current: string) {
   if (path === "/app") return current === "/app";
   if (path === "/nuts") return current === "/nuts" || current.startsWith("/nuts/");
-  return current.startsWith(path);
+  return current === path || current.startsWith(`${path}/`);
 }
 
 export function AppSidebar(props: { user?: User; loading?: boolean }) {
+  const location = useLocation();
+  const isActive = (path: string) => active(path, location.pathname);
+
   return (
     <aside {...stylex.attrs(s.side)} data-deez="sidebar">
       <div data-deez="sidebar-sticky">
@@ -37,10 +40,10 @@ export function AppSidebar(props: { user?: User; loading?: boolean }) {
         </Show>
 
         <nav {...stylex.attrs(s.sideNav)} data-deez="side-nav" aria-label="My Deez">
-          <a {...stylex.attrs(s.sideLink, active("/app") && s.sideLinkActive)} data-deez="side-link" data-active={active("/app") ? "true" : "false"} href="/app"><UiIcon name="home" /> <span>Today</span></a>
-          <a {...stylex.attrs(s.sideLink, active("/app/decks") && s.sideLinkActive)} data-deez="side-link" data-active={active("/app/decks") ? "true" : "false"} href="/app/decks"><UiIcon name="card" /> <span>My nuts</span></a>
-          <a {...stylex.attrs(s.sideLink, active("/app/settings") && s.sideLinkActive)} data-deez="side-link" data-active={active("/app/settings") ? "true" : "false"} href="/app/settings"><UiIcon name="settings" /> <span>Settings</span></a>
-          <a {...stylex.attrs(s.sideLink, active("/nuts") && s.sideLinkActive)} data-deez="side-link" data-active={active("/nuts") ? "true" : "false"} href="/nuts"><UiIcon name="globe" /> <span>Public nuts</span></a>
+          <a {...stylex.attrs(s.sideLink, isActive("/app") && s.sideLinkActive)} data-deez="side-link" data-active={isActive("/app") ? "true" : "false"} href="/app"><UiIcon name="home" /> <span>Today</span></a>
+          <a {...stylex.attrs(s.sideLink, isActive("/app/decks") && s.sideLinkActive)} data-deez="side-link" data-active={isActive("/app/decks") ? "true" : "false"} href="/app/decks"><UiIcon name="card" /> <span>My nuts</span></a>
+          <a {...stylex.attrs(s.sideLink, isActive("/app/settings") && s.sideLinkActive)} data-deez="side-link" data-active={isActive("/app/settings") ? "true" : "false"} href="/app/settings"><UiIcon name="settings" /> <span>Settings</span></a>
+          <a {...stylex.attrs(s.sideLink, isActive("/nuts") && s.sideLinkActive)} data-deez="side-link" data-active={isActive("/nuts") ? "true" : "false"} href="/nuts"><UiIcon name="globe" /> <span>Public nuts</span></a>
         </nav>
 
         <div {...stylex.attrs(s.quoteCard)} data-deez="quote" aria-hidden="true">
