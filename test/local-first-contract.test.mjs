@@ -110,6 +110,9 @@ test("deck management supports rename export duplicate reset and confirmed delet
 test("signed-in chrome keeps email out and uses route-correct full-height chrome", () => {
   assert.match(app, /useLocation/);
   assert.match(app, /location\.pathname\.startsWith\("\/app"\)/);
+  assert.match(appChrome, /useLocation/);
+  assert.match(appChrome, /active\(path, location\.pathname\)/);
+  assert.doesNotMatch(appChrome, /const current = window\.location\.pathname/);
   assert.doesNotMatch(appChrome, /current\(\)\.email/);
   assert.match(appChrome, /data-deez="sidebar-sticky"/);
   assert.match(appChrome, /FREE/);
