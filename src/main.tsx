@@ -6,6 +6,7 @@ import "./neoRetro.css";
 import "./neoRetroPublic.css";
 import "./layoutRefine.css";
 import "./reliabilityUx.css";
+import "./studyCompleteness.css";
 
 function forceStudyDocumentNavigation(event: MouseEvent) {
   if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.altKey || event.ctrlKey || event.shiftKey) return;
