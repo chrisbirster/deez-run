@@ -80,6 +80,18 @@ async function remoteStudyNextWithExclusions(deckId: string, options: StudyNextO
   return await response.json() as StudyNext;
 }
 
+async function mapCloudStudyNext(next: StudyNext, localDeckId: string): Promise<StudyNext> {
+  if (!next.card) return next;
+  const local = (await localDb.cards()).find((card) => card.remote_id === next.card!.id);
+  return {
+    card: {
+      ...next.card,
+      id: local?.id ?? next.card.id,
+      deck_id: localDeckId,
+    },
+  };
+}
+
 export const appApi = {
   ...accountApi,
 
@@ -93,7 +105,8 @@ export const appApi = {
     if (!navigator.onLine || pending.length > 0) return offlineStudyNext(deckId, base, excluded);
 
     const remoteExcluded = await Promise.all(excludeCardIds.map(remoteCardId));
-    return remoteStudyNextWithExclusions(await remoteDeckId(deckId), base, remoteExcluded);
+    const next = await remoteStudyNextWithExclusions(await remoteDeckId(deckId), base, remoteExcluded);
+    return mapCloudStudyNext(next, deckId);
   },
 
   async snapshotDeck(deckId: string): Promise<DeckSnapshot> {
