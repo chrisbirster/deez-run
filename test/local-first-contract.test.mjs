@@ -15,6 +15,7 @@ const appApi = fs.readFileSync(new URL("../src/appApi.ts", import.meta.url), "ut
 const remoteApi = fs.readFileSync(new URL("../src/remoteApi.ts", import.meta.url), "utf8");
 const authPatch = fs.readFileSync(new URL("../patches/patch-hosted-auth.py", import.meta.url), "utf8");
 const reliabilityPatch = fs.readFileSync(new URL("../patches/patch-production-reliability.py", import.meta.url), "utf8");
+const deckDeletePatch = fs.readFileSync(new URL("../patches/patch-deck-delete.py", import.meta.url), "utf8");
 const dockerfile = fs.readFileSync(new URL("../Dockerfile", import.meta.url), "utf8");
 const app = fs.readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
 const appChrome = fs.readFileSync(new URL("../src/appChrome.tsx", import.meta.url), "utf8");
@@ -40,7 +41,8 @@ test("portable imports are atomic locally and never auto-delete recoverable data
   assert.match(localDb, /database\.transaction\(\[DECKS, NOTES, OUTBOX\]/);
   assert.match(importPipeline, /putImportBatch\(deck, deckOutbox, rows\)/);
   assert.match(importPipeline, /stage: "writing-local"/);
-  assert.match(importPipeline, /stage: "uploading"/);
+  assert.match(importPipeline, /navigator\.onLine \? "uploading" : "attention"/);
+  assert.match(importPipeline, /stage: pending \|\| rejected \? "attention" : "generating"/);
   assert.match(importPipeline, /stage: "complete"/);
   assert.match(tools, /Writing locally/);
   assert.match(tools, /Generating cards/);
@@ -55,9 +57,9 @@ test("review replication preserves timestamps and idempotent conflict checks", (
 test("normal account replication uses one snapshot per deck instead of card-detail N+1 hydration", () => {
   assert.match(remoteApi, /snapshotDeck/);
   assert.match(replication, /remoteApi\.snapshotDeck\(remoteDeck\.id\)/);
-  const pull = replication.slice(replication.indexOf("async function pullSnapshot"), replication.indexOf("export async function hydrateDeckForOffline"));
-  assert.doesNotMatch(pull, /remoteApi\.getCard/);
-  assert.doesNotMatch(pull, /remoteApi\.previewStudy/);
+  const apply = replication.slice(replication.indexOf("async function applyRemoteSnapshot"), replication.indexOf("async function pullSnapshot"));
+  assert.doesNotMatch(apply, /remoteApi\.getCard/);
+  assert.doesNotMatch(apply, /remoteApi\.previewStudy/);
   assert.match(reliabilityPatch, /\/api\/v1\/decks\/:id\/snapshot/);
 });
 
@@ -105,6 +107,9 @@ test("deck management supports rename export duplicate reset and confirmed delet
   assert.match(deckPage, /Delete deck/);
   assert.match(deckPage, /window\.confirm/);
   assert.match(appApi, /resetDeckScheduling/);
+  assert.match(deckDeletePatch, /deleteReviews/);
+  assert.match(deckDeletePatch, /clearSchedulerState/);
+  assert.match(dockerfile, /patch-deck-delete\.py/);
 });
 
 test("signed-in chrome keeps email out and uses route-correct full-height chrome", () => {
