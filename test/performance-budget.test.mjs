@@ -21,10 +21,10 @@ test("large-deck reads use bounded query shapes", () => {
   assert.match(hostedPatch, /fastDeckCounts/);
   assert.match(reliabilityPatch, /deckSnapshot/);
   assert.match(studyQueuePatch, /Snapshot the retirement IDs once/);
-  const pull = replication.slice(replication.indexOf("async function pullSnapshot"), replication.indexOf("export async function hydrateDeckForOffline"));
-  assert.equal((pull.match(/snapshotDeck\(/g) ?? []).length, budgets.snapshotRequestsPerDeck);
-  assert.doesNotMatch(pull, /getCard\(/);
-  assert.doesNotMatch(pull, /previewStudy\(/);
+  const apply = replication.slice(replication.indexOf("async function applyRemoteSnapshot"), replication.indexOf("async function pullSnapshot"));
+  assert.equal((apply.match(/snapshotDeck\(/g) ?? []).length, budgets.snapshotRequestsPerDeck);
+  assert.doesNotMatch(apply, /getCard\(/);
+  assert.doesNotMatch(apply, /previewStudy\(/);
 });
 
 test("large imports use a single IndexedDB batch and server chunks", () => {
