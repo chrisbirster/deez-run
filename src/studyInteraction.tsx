@@ -1,5 +1,5 @@
-import { For, Show, createEffect, createMemo, createSignal } from "solid-js";
-import type { CardChoice, CardDetail, CardInteraction } from "./appApi";
+import { For, createEffect, createMemo, createSignal } from "solid-js";
+import type { CardChoice, CardDetail } from "./appApi";
 
 function normalize(value: string) {
   return value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
@@ -83,26 +83,24 @@ export function StudyInteraction(props: { card: CardDetail; revealed: boolean })
     });
   }
 
-  return <div data-deez="study-interaction" data-interaction={interaction().type}>
-    <Show when={interaction().type === "type_answer"}>{() => {
-      const current = interaction() as Extract<CardInteraction, { type: "type_answer" }>;
+  function renderInteraction() {
+    const current = interaction();
+
+    if (current.type === "type_answer") {
       return <>
         <label data-deez="answer-field">
           <span>Your answer</span>
           <input data-deez="study-input" value={typed()} autocomplete="off" autocapitalize="off" disabled={props.revealed} onInput={(event) => setTyped(event.currentTarget.value)} />
         </label>
-        <Show when={props.revealed}>
-          <div data-deez="answer-feedback" data-correct={correctness() === true ? "true" : "false"}>
-            <strong>{ratingWord(correctness())}</strong>
-            <span>Answer: {current.answer}</span>
-            <Show when={typed().trim()}><small>You answered: {typed()}</small></Show>
-          </div>
-        </Show>
+        {props.revealed ? <div data-deez="answer-feedback" data-correct={correctness() === true ? "true" : "false"}>
+          <strong>{ratingWord(correctness())}</strong>
+          <span>Answer: {current.answer}</span>
+          {typed().trim() ? <small>You answered: {typed()}</small> : null}
+        </div> : null}
       </>;
-    }}</Show>
+    }
 
-    <Show when={interaction().type === "single_choice"}>{() => {
-      const current = interaction() as Extract<CardInteraction, { type: "single_choice" }>;
+    if (current.type === "single_choice") {
       return <div data-deez="choice-grid" role="radiogroup" aria-label="Choose one answer">
         <For each={current.choices}>{(choice, index) => {
           const selected = () => single() === choice.id;
@@ -112,12 +110,11 @@ export function StudyInteraction(props: { card: CardDetail; revealed: boolean })
             <span data-deez="choice-key">{index() + 1}</span><span>{choice.text}</span>
           </button>;
         }}</For>
-        <Show when={props.revealed}><div data-deez="answer-feedback" data-correct={correctness() === true ? "true" : "false"}><strong>{ratingWord(correctness())}</strong></div></Show>
+        {props.revealed ? <div data-deez="answer-feedback" data-correct={correctness() === true ? "true" : "false"}><strong>{ratingWord(correctness())}</strong></div> : null}
       </div>;
-    }}</Show>
+    }
 
-    <Show when={interaction().type === "multiple_choice"}>{() => {
-      const current = interaction() as Extract<CardInteraction, { type: "multiple_choice" }>;
+    if (current.type === "multiple_choice") {
       return <div data-deez="choice-grid" aria-label="Choose all correct answers">
         <For each={current.choices}>{(choice) => {
           const selected = () => multiple().includes(choice.id);
@@ -127,12 +124,11 @@ export function StudyInteraction(props: { card: CardDetail; revealed: boolean })
             <span data-deez="choice-check">{selected() ? "✓" : "□"}</span><span>{choice.text}</span>
           </button>;
         }}</For>
-        <Show when={props.revealed}><div data-deez="answer-feedback" data-correct={correctness() === true ? "true" : "false"}><strong>{ratingWord(correctness())}</strong><span>Select every highlighted correct option.</span></div></Show>
+        {props.revealed ? <div data-deez="answer-feedback" data-correct={correctness() === true ? "true" : "false"}><strong>{ratingWord(correctness())}</strong><span>Select every highlighted correct option.</span></div> : null}
       </div>;
-    }}</Show>
+    }
 
-    <Show when={interaction().type === "ordering"}>{() => {
-      const current = interaction() as Extract<CardInteraction, { type: "ordering" }>;
+    if (current.type === "ordering") {
       return <div data-deez="ordering">
         <p data-deez="interaction-help">Put the items in the correct order.</p>
         <For each={ordered()}>{(item, index) => {
@@ -146,29 +142,30 @@ export function StudyInteraction(props: { card: CardDetail; revealed: boolean })
             </div>
           </div>;
         }}</For>
-        <Show when={props.revealed}><div data-deez="answer-feedback" data-correct={correctness() === true ? "true" : "false"}><strong>{ratingWord(correctness())}</strong><span>Correct order: {current.items.map((item) => item.text).join(" → ")}</span></div></Show>
+        {props.revealed ? <div data-deez="answer-feedback" data-correct={correctness() === true ? "true" : "false"}><strong>{ratingWord(correctness())}</strong><span>Correct order: {current.items.map((item) => item.text).join(" → ")}</span></div> : null}
       </div>;
-    }}</Show>
+    }
 
-    <Show when={interaction().type === "image_occlusion"}>{() => {
-      const current = interaction() as Extract<CardInteraction, { type: "image_occlusion" }>;
+    if (current.type === "image_occlusion") {
       const target = () => current.masks.find((mask) => mask.id === current.target_mask_id);
-      const source = () => mediaSource(current.image_ref);
+      const source = mediaSource(current.image_ref);
       return <div data-deez="occlusion">
-        <Show when={target()?.prompt}><p data-deez="interaction-help">{target()?.prompt}</p></Show>
-        <Show when={source()} fallback={<div data-deez="media-unavailable">Image media is not available on this device yet.<small>{current.image_ref}</small></div>}>
-          {(src) => <div data-deez="occlusion-frame">
-            <img src={src()} alt="Image occlusion study card" />
-            <For each={current.masks}>{(mask) => <span
-              data-deez="occlusion-mask"
-              data-target={mask.id === current.target_mask_id ? "true" : "false"}
-              data-revealed={props.revealed ? "true" : "false"}
-              style={{ left: `${mask.x * 100}%`, top: `${mask.y * 100}%`, width: `${mask.width * 100}%`, height: `${mask.height * 100}%` }}
-            />}</For>
-          </div>}
-        </Show>
-        <Show when={props.revealed && target()}>{(mask) => <div data-deez="answer-feedback" data-correct="true"><strong>Revealed</strong><span>{mask().answer}</span></div>}</Show>
+        {target()?.prompt ? <p data-deez="interaction-help">{target()?.prompt}</p> : null}
+        {source ? <div data-deez="occlusion-frame">
+          <img src={source} alt="Image occlusion study card" />
+          <For each={current.masks}>{(mask) => <span
+            data-deez="occlusion-mask"
+            data-target={mask.id === current.target_mask_id ? "true" : "false"}
+            data-revealed={props.revealed ? "true" : "false"}
+            style={{ left: `${mask.x * 100}%`, top: `${mask.y * 100}%`, width: `${mask.width * 100}%`, height: `${mask.height * 100}%` }}
+          />}</For>
+        </div> : <div data-deez="media-unavailable">Image media is not available on this device yet.<small>{current.image_ref}</small></div>}
+        {props.revealed && target() ? <div data-deez="answer-feedback" data-correct="true"><strong>Revealed</strong><span>{target()!.answer}</span></div> : null}
       </div>;
-    }}</Show>
-  </div>;
+    }
+
+    return null;
+  }
+
+  return <div data-deez="study-interaction" data-interaction={interaction().type}>{renderInteraction()}</div>;
 }
