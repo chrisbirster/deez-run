@@ -29,8 +29,8 @@ export type LocalCard = {
   deck_id: string;
   note_id?: string;
   summary: CardSummary;
-  detail: CardDetail;
-  preview: StudyPreview;
+  detail?: CardDetail;
+  preview?: StudyPreview;
   due_at_ms: number;
   pending_review: boolean;
 };
@@ -53,6 +53,7 @@ export type OutboxItem = {
   conflict?: string;
 };
 
+export type ImportBatchRow = { note: LocalNote; outbox: OutboxItem };
 type MetaRecord = { key: string; value: unknown };
 
 function req<T = undefined>(request: IDBRequest<T>) {
@@ -137,6 +138,41 @@ async function putWithOutbox<T>(storeName: string, value: T, outbox: OutboxItem)
   }
 }
 
+async function putImportBatch(deck: LocalDeck, deckOutbox: OutboxItem, rows: readonly ImportBatchRow[]) {
+  const database = await db();
+  try {
+    const transaction = database.transaction([DECKS, NOTES, OUTBOX], "readwrite");
+    const decks = transaction.objectStore(DECKS);
+    const notes = transaction.objectStore(NOTES);
+    const outbox = transaction.objectStore(OUTBOX);
+    decks.put(deck);
+    outbox.put(deckOutbox);
+    for (const row of rows) {
+      notes.put(row.note);
+      outbox.put(row.outbox);
+    }
+    await txDone(transaction);
+  } finally {
+    database.close();
+  }
+}
+
+async function putSnapshotBatch(deck: LocalDeck, notes: readonly LocalNote[], cards: readonly LocalCard[]) {
+  const database = await db();
+  try {
+    const transaction = database.transaction([DECKS, NOTES, CARDS], "readwrite");
+    const deckStore = transaction.objectStore(DECKS);
+    const noteStore = transaction.objectStore(NOTES);
+    const cardStore = transaction.objectStore(CARDS);
+    deckStore.put(deck);
+    for (const note of notes) noteStore.put(note);
+    for (const card of cards) cardStore.put(card);
+    await txDone(transaction);
+  } finally {
+    database.close();
+  }
+}
+
 export function localId(prefix: "deck" | "note" | "review") {
   return `${prefix}:local:${crypto.randomUUID()}`;
 }
@@ -159,6 +195,9 @@ export const localDb = {
   putCard: (value: LocalCard) => put(CARDS, value),
   putCardWithOutbox: (value: LocalCard, outbox: OutboxItem) => putWithOutbox(CARDS, value, outbox),
   deleteCardRecord: (id: string) => remove(CARDS, id),
+
+  putImportBatch,
+  putSnapshotBatch,
 
   outbox: async () => (await all<OutboxItem>(OUTBOX)).sort((a, b) => a.created_at_ms - b.created_at_ms || a.id.localeCompare(b.id)),
   putOutbox: (value: OutboxItem) => put(OUTBOX, value),

@@ -23,13 +23,7 @@ let primed = false;
 let primePromise: Promise<void> | undefined;
 
 function outbox(kind: OutboxKind, entityId: string, payload: Record<string, unknown> = {}, createdAtMs = Date.now()): OutboxItem {
-  return {
-    id: `${kind}:${entityId}:${createdAtMs}:${crypto.randomUUID()}`,
-    kind,
-    entity_id: entityId,
-    created_at_ms: createdAtMs,
-    payload,
-  };
+  return { id: `${kind}:${entityId}:${createdAtMs}:${crypto.randomUUID()}`, kind, entity_id: entityId, created_at_ms: createdAtMs, payload };
 }
 
 async function prime() {
@@ -42,10 +36,7 @@ async function prime() {
         if (navigator.onLine) void kickReplication();
         return;
       }
-
-      if (navigator.onLine) {
-        await replicateNow();
-      }
+      if (navigator.onLine) await replicateNow();
       primed = true;
     })().finally(() => { primePromise = undefined; });
   }
@@ -54,7 +45,7 @@ async function prime() {
 
 async function kickReplication() {
   if (!navigator.onLine) return;
-  try { await replicateNow(); } catch { /* local commit remains durable and will retry */ }
+  try { await replicateNow(); } catch { /* durable outbox retries later */ }
 }
 
 function publicDeck(deck: LocalDeck): Deck {
@@ -62,15 +53,7 @@ function publicDeck(deck: LocalDeck): Deck {
 }
 
 function publicNote(note: LocalNote): Note {
-  return {
-    id: note.id,
-    deck_id: note.deck_id,
-    note_type: note.note_type,
-    fields: [...note.fields],
-    tags: [...note.tags],
-    created_at_ms: note.created_at_ms,
-    updated_at_ms: note.updated_at_ms,
-  };
+  return { id: note.id, deck_id: note.deck_id, note_type: note.note_type, fields: [...note.fields], tags: [...note.tags], created_at_ms: note.created_at_ms, updated_at_ms: note.updated_at_ms };
 }
 
 async function findCards(deckId: string) {
@@ -100,8 +83,13 @@ function orderedCards(cards: LocalCard[], options: StudyNextOptions) {
   return copy;
 }
 
-async function cachedUser() {
-  return localDb.meta<User>("user");
+async function cachedUser() { return localDb.meta<User>("user"); }
+
+function requireOfflineDetail(card: LocalCard): { detail: CardDetail; preview: StudyPreview } {
+  if (!card.detail || !card.preview) {
+    throw new Error("This card is listed in the offline snapshot but its full study data is not cached. Connect and use Sync for offline on this deck.");
+  }
+  return { detail: card.detail, preview: card.preview };
 }
 
 export const appApi = {
@@ -154,9 +142,7 @@ export const appApi = {
         const value = await remoteApi.capabilities();
         await localDb.putMeta("capabilities", value);
         return value;
-      } catch {
-        // Fall through to the cached schema.
-      }
+      } catch { /* fall through */ }
     }
     const cached = await localDb.meta<Capabilities>("capabilities");
     if (!cached) throw new Error("Note-type definitions are not cached yet. Open Deez online once before authoring offline.");
@@ -173,7 +159,7 @@ export const appApi = {
       decks: decks.length,
       cards: cards.length,
       due: cards.filter((card) => card.due_at_ms <= now).length,
-      reviews: cards.reduce((sum, card) => sum + card.detail.review_count, 0),
+      reviews: cards.reduce((sum, card) => sum + (card.detail?.review_count ?? 0), 0),
     };
   },
 
@@ -220,14 +206,7 @@ export const appApi = {
     await prime();
     const notes = (await localDb.notes()).filter((note) => note.deck_id === deckId && !note.deleted);
     const cards = await findCards(deckId);
-    return notes.map((note) => ({
-      id: note.id,
-      deck_id: deckId,
-      note_type: note.note_type,
-      preview: note.fields[0] ?? "",
-      card_count: cards.filter((card) => card.note_id === note.id).length,
-      updated_at_ms: note.updated_at_ms,
-    }));
+    return notes.map((note) => ({ id: note.id, deck_id: deckId, note_type: note.note_type, preview: note.fields[0] ?? "", card_count: cards.filter((card) => card.note_id === note.id).length, updated_at_ms: note.updated_at_ms }));
   },
 
   async listCards(deckId: string): Promise<CardSummary[]> {
@@ -248,17 +227,7 @@ export const appApi = {
     if (!deck || deck.deleted) throw new Error("Deck not found");
     const now = Date.now();
     const id = localId("note");
-    const note: LocalNote = {
-      id,
-      deck_id: deckId,
-      note_type: input.note_type,
-      fields: [...input.fields],
-      tags: [...input.tags],
-      created_at_ms: now,
-      updated_at_ms: now,
-      dirty: true,
-      deleted: false,
-    };
+    const note: LocalNote = { id, deck_id: deckId, note_type: input.note_type, fields: [...input.fields], tags: [...input.tags], created_at_ms: now, updated_at_ms: now, dirty: true, deleted: false };
     await localDb.putNoteWithOutbox(note, outbox("create_note", id));
     await localDb.putDeck({ ...deck, note_count: deck.note_count + 1 });
     void kickReplication();
@@ -269,14 +238,7 @@ export const appApi = {
     await prime();
     const note = await localDb.note(noteId);
     if (!note || note.deleted) throw new Error("Note not found");
-    const updated: LocalNote = {
-      ...note,
-      note_type: input.note_type,
-      fields: [...input.fields],
-      tags: [...input.tags],
-      updated_at_ms: Date.now(),
-      dirty: true,
-    };
+    const updated: LocalNote = { ...note, note_type: input.note_type, fields: [...input.fields], tags: [...input.tags], updated_at_ms: Date.now(), dirty: true };
     await localDb.putNoteWithOutbox(updated, outbox("update_note", noteId));
     void kickReplication();
     return publicNote(updated);
@@ -310,61 +272,41 @@ export const appApi = {
     await prime();
     const card = await localDb.card(cardId);
     if (!card) throw new Error("Card not found");
-    return { ...card.detail, id: card.id, deck_id: card.deck_id, note_id: card.note_id };
+    const { detail } = requireOfflineDetail(card);
+    return { ...detail, id: card.id, deck_id: card.deck_id, note_id: card.note_id };
   },
 
   async previewStudy(cardId: string): Promise<StudyPreview> {
     await prime();
     const card = await localDb.card(cardId);
     if (!card) throw new Error("Card not found");
-    const calculated = await scheduleHistory(card.preview.fsrs7_parameters, card.detail.reviews ?? [], Date.now());
-    return {
-      ...card.preview,
-      card_id: card.id,
-      review_count: card.detail.review_count,
-      schedule: calculated.schedule,
-    };
+    const { detail, preview } = requireOfflineDetail(card);
+    const calculated = await scheduleHistory(preview.fsrs7_parameters, detail.reviews ?? [], Date.now());
+    return { ...preview, card_id: card.id, review_count: detail.review_count, schedule: calculated.schedule };
   },
 
   async review(cardId: string, rating: 1 | 2 | 3 | 4, expectedReviewCount: number, reviewedAtMs = Date.now()) {
     await prime();
     const card = await localDb.card(cardId);
     if (!card) throw new Error("Card not found");
-    if (card.detail.review_count !== expectedReviewCount) throw new Error("Local review history changed; refresh this card before rating it again.");
-
-    const existingReviews = card.detail.reviews ?? [];
-    if (existingReviews.length && reviewedAtMs <= existingReviews[existingReviews.length - 1].reviewed_at_ms) {
-      reviewedAtMs = existingReviews[existingReviews.length - 1].reviewed_at_ms + 1;
-    }
-    const before = await scheduleHistory(card.preview.fsrs7_parameters, existingReviews, reviewedAtMs);
+    const { detail, preview } = requireOfflineDetail(card);
+    if (detail.review_count !== expectedReviewCount) throw new Error("Local review history changed; refresh this card before rating it again.");
+    const existingReviews = detail.reviews ?? [];
+    if (existingReviews.length && reviewedAtMs <= existingReviews[existingReviews.length - 1].reviewed_at_ms) reviewedAtMs = existingReviews[existingReviews.length - 1].reviewed_at_ms + 1;
+    const before = await scheduleHistory(preview.fsrs7_parameters, existingReviews, reviewedAtMs);
     const key = ({ 1: "again", 2: "hard", 3: "good", 4: "easy" } as const)[rating];
     const candidate = before.schedule[key];
     const reviews = [...existingReviews, { rating, reviewed_at_ms: reviewedAtMs }];
-    const after = await scheduleHistory(card.preview.fsrs7_parameters, reviews, reviewedAtMs);
+    const after = await scheduleHistory(preview.fsrs7_parameters, reviews, reviewedAtMs);
     const updated: LocalCard = {
       ...card,
       summary: { ...card.summary, due_at_ms: candidate.due_at_ms, last_reviewed_at_ms: reviewedAtMs },
-      detail: {
-        ...card.detail,
-        review_count: expectedReviewCount + 1,
-        reviews,
-        scheduler: {
-          stability_days: after.stability_days,
-          difficulty: after.difficulty,
-          due_at_ms: candidate.due_at_ms,
-          last_reviewed_at_ms: reviewedAtMs,
-        },
-      },
-      preview: { ...card.preview, review_count: expectedReviewCount + 1, schedule: after.schedule },
+      detail: { ...detail, review_count: expectedReviewCount + 1, reviews, scheduler: { stability_days: after.stability_days, difficulty: after.difficulty, due_at_ms: candidate.due_at_ms, last_reviewed_at_ms: reviewedAtMs } },
+      preview: { ...preview, review_count: expectedReviewCount + 1, schedule: after.schedule },
       due_at_ms: candidate.due_at_ms,
       pending_review: true,
     };
-    await localDb.putCardWithOutbox(updated, outbox("review", cardId, {
-      remote_card_id: card.remote_id,
-      rating,
-      expected_review_count: expectedReviewCount,
-      reviewed_at_ms: reviewedAtMs,
-    }, reviewedAtMs));
+    await localDb.putCardWithOutbox(updated, outbox("review", cardId, { remote_card_id: card.remote_id, rating, expected_review_count: expectedReviewCount, reviewed_at_ms: reviewedAtMs }, reviewedAtMs));
     void kickReplication();
     return undefined;
   },

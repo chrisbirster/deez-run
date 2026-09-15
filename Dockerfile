@@ -39,14 +39,18 @@ ENV PATH="/opt/zig:${PATH}"
 COPY patches/patch-hosted-web.py /tmp/patch-hosted-web.py
 COPY patches/patch-hosted-auth.py /tmp/patch-hosted-auth.py
 COPY patches/patch-study-queue.py /tmp/patch-study-queue.py
+COPY patches/patch-production-reliability.py /tmp/patch-production-reliability.py
+COPY patches/patch-deck-delete.py /tmp/patch-deck-delete.py
 WORKDIR /src/deez
 RUN git clone https://github.com/chrisbirster/deez.git . \
     && git checkout --detach "${DEEZ_COMMIT}" \
     && test "$(git rev-parse HEAD)" = "${DEEZ_COMMIT}" \
     && python3 /tmp/patch-hosted-web.py src/hosted_web.zig \
     && python3 /tmp/patch-hosted-auth.py src/hosted_auth.zig \
-    && python3 /tmp/patch-study-queue.py src/storage/store.zig
-RUN zig fmt src/hosted_web.zig src/hosted_auth.zig src/storage/store.zig \
+    && python3 /tmp/patch-study-queue.py src/storage/store.zig \
+    && python3 /tmp/patch-production-reliability.py /src/deez \
+    && python3 /tmp/patch-deck-delete.py src/hosted_web.zig
+RUN zig fmt src/hosted_web.zig src/hosted_auth.zig src/storage/store.zig src/storage/sqlite.zig src/storage/mongodb.zig \
     && zig build -Doptimize=ReleaseSafe
 
 FROM debian:bookworm-slim AS runtime

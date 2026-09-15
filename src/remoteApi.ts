@@ -23,6 +23,7 @@ export type NoteInput = { note_type: string; fields: string[]; tags: string[] };
 export type BulkNoteResponse = { notes: Note[] };
 export type CardGeneration = { kind: "template" | "cloze" | "occlusion"; ordinal: number };
 export type CardSummary = { id: ApiId; deck_id: ApiId; front: string; note_id?: ApiId; generation?: CardGeneration; due_at_ms?: number; last_reviewed_at_ms?: number };
+export type DeckSnapshot = { deck: Deck; notes: Note[]; cards: CardSummary[] };
 export type ReviewHistory = { rating: 1 | 2 | 3 | 4; reviewed_at_ms: number };
 export type SchedulerState = { stability_days: number | null; difficulty: number | null; due_at_ms: number; last_reviewed_at_ms: number | null };
 export type StudyNext = { card: { id: ApiId; deck_id: ApiId; due_at_ms: number | null } | null };
@@ -139,8 +140,10 @@ export const appApi = {
   listDecks: () => request<Deck[]>("/decks"),
   createDeck: (name: string) => request<Deck>("/decks", { method: "POST", body: JSON.stringify({ name }) }),
   getDeck: (id: string) => request<Deck>(`/decks/${encodeURIComponent(id)}`),
+  snapshotDeck: (id: string) => request<DeckSnapshot>(`/decks/${encodeURIComponent(id)}/snapshot`),
   renameDeck: (id: string, name: string) => request<Deck>(`/decks/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ name }) }),
   deleteDeck: (id: string) => request<void>(`/decks/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  resetDeckScheduling: (id: string) => request<Deck>(`/decks/${encodeURIComponent(id)}/scheduling/reset`, { method: "POST" }),
   listNotes: (deckId: string) => request<NoteSummary[]>(`/decks/${encodeURIComponent(deckId)}/notes`),
   listCards: (deckId: string) => request<CardSummary[]>(`/decks/${encodeURIComponent(deckId)}/cards`),
   getNote: (noteId: string) => request<Note>(`/notes/${encodeURIComponent(noteId)}`),
@@ -155,4 +158,5 @@ export const appApi = {
     method: "POST",
     body: JSON.stringify({ rating, expected_review_count: expectedReviewCount, ...(reviewedAtMs === undefined ? {} : { reviewed_at_ms: reviewedAtMs }) }),
   }),
+  undoLastReview: (cardId: string) => request<void>(`/cards/${encodeURIComponent(cardId)}/reviews/last`, { method: "DELETE" }),
 };

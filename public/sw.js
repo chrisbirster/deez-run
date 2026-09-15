@@ -1,4 +1,4 @@
-const CACHE_VERSION = "deez-plane-v7";
+const CACHE_VERSION = "deez-plane-v8";
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const MEDIA_CACHE = `${CACHE_VERSION}-media`;
 const STUDY_SHELL = "/app/decks/__deez-study-shell__/study";
@@ -10,9 +10,7 @@ function assetUrls(html) {
   return [...found];
 }
 
-function isStudyPath(pathname) {
-  return /^\/app\/decks\/[^/]+\/study$/.test(pathname);
-}
+function isStudyPath(pathname) { return /^\/app\/decks\/[^/]+\/study$/.test(pathname); }
 
 async function primeShell() {
   const cache = await caches.open(SHELL_CACHE);
@@ -31,10 +29,7 @@ async function primeShell() {
   }));
 }
 
-self.addEventListener("install", (event) => {
-  event.waitUntil(primeShell().then(() => self.skipWaiting()));
-});
-
+self.addEventListener("install", (event) => { event.waitUntil(primeShell().then(() => self.skipWaiting())); });
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const names = await caches.keys();
@@ -50,13 +45,10 @@ async function navigation(request) {
     const response = await fetch(request);
     if (response.ok && !study) {
       const cache = await caches.open(SHELL_CACHE);
-      // Only strict-CSP documents may replace the generic offline app shell.
       await cache.put("/app", response.clone());
     }
     return response;
   } catch {
-    // The pre-cached Study shell received its narrow WASM CSP from the server;
-    // returning it preserves offline Study without ever weakening /app.
     if (study) return (await caches.match(STUDY_SHELL)) || Response.error();
     return (await caches.match("/app")) || (await caches.match("/")) || Response.error();
   }
@@ -91,20 +83,8 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-
-  if (request.mode === "navigate") {
-    event.respondWith(navigation(request));
-    return;
-  }
-
-  if (url.pathname.startsWith("/api/v1/media/")) {
-    event.respondWith(media(request));
-    return;
-  }
-
+  if (request.mode === "navigate") { event.respondWith(navigation(request)); return; }
+  if (url.pathname.startsWith("/api/v1/media/")) { event.respondWith(media(request)); return; }
   if (url.pathname.startsWith("/api/")) return;
-
-  if (url.pathname.startsWith("/assets/") || url.pathname === "/manifest.webmanifest" || url.pathname === "/deez-scheduler.wasm") {
-    event.respondWith(staticAsset(request));
-  }
+  if (url.pathname.startsWith("/assets/") || url.pathname === "/manifest.webmanifest" || url.pathname === "/deez-scheduler.wasm") event.respondWith(staticAsset(request));
 });
