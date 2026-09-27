@@ -7,7 +7,9 @@ const importer = fs.readFileSync(new URL("../src/importPipeline.ts", import.meta
 const portable = fs.readFileSync(new URL("../src/portable.ts", import.meta.url), "utf8");
 const hostedPatch = fs.readFileSync(new URL("../patches/patch-hosted-web.py", import.meta.url), "utf8");
 const reliabilityPatch = fs.readFileSync(new URL("../patches/patch-production-reliability.py", import.meta.url), "utf8");
-const studyQueuePatch = fs.readFileSync(new URL("../patches/patch-study-queue.py", import.meta.url), "utf8");\nconst largeDeckPatch = fs.readFileSync(new URL("../patches/patch-large-deck-reads.py", import.meta.url), "utf8");\nconst dashboard = fs.readFileSync(new URL("../src/dashboardPage.tsx", import.meta.url), "utf8");
+const studyQueuePatch = fs.readFileSync(new URL("../patches/patch-study-queue.py", import.meta.url), "utf8");
+const largeDeckPatch = fs.readFileSync(new URL("../patches/patch-large-deck-reads.py", import.meta.url), "utf8");
+const dashboard = fs.readFileSync(new URL("../src/dashboardPage.tsx", import.meta.url), "utf8");
 
 export const budgets = Object.freeze({
   deckListMs: 2_000,
