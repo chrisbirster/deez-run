@@ -124,10 +124,12 @@ export const appApi = {
 
   async stats(deckId?: string): Promise<Stats> {
     if (!navigator.onLine) return localApi.stats(deckId);
+    const localDeck = deckId ? await localDb.deck(deckId) : undefined;
     try {
       return remoteApi.stats(deckId ? await remoteDeckId(deckId) : undefined);
     } catch (reason) {
       if (!shouldFallback(reason)) throw reason;
+      if (deckId && (!localDeck || localDeck.deleted)) throw reason;
       return localApi.stats(deckId);
     }
   },
@@ -190,6 +192,7 @@ export const appApi = {
   },
 
   async listCards(deckId: string): Promise<CardSummary[]> {
+    const localDeck = await localDb.deck(deckId);
     if (navigator.onLine && !(await deckHasPending(deckId))) {
       try {
         const [remoteId, byRemote] = await Promise.all([remoteDeckId(deckId), localCardMap(deckId)]);
@@ -205,6 +208,7 @@ export const appApi = {
         });
       } catch (reason) {
         if (!shouldFallback(reason)) throw reason;
+        if (!localDeck || localDeck.deleted) throw reason;
       }
     }
     return localApi.listCards(deckId);
@@ -244,6 +248,7 @@ export const appApi = {
   },
 
   async nextStudyCard(deckId: string, options: StudyNextOptions = {}): Promise<StudyNext> {
+    const localDeck = await localDb.deck(deckId);
     if (navigator.onLine && !(await deckHasPending(deckId))) {
       try {
         const remoteId = await remoteDeckId(deckId);
@@ -260,6 +265,7 @@ export const appApi = {
         };
       } catch (reason) {
         if (!shouldFallback(reason)) throw reason;
+        if (!localDeck || localDeck.deleted) throw reason;
       }
     }
     return localApi.nextStudyCard(deckId, options);
