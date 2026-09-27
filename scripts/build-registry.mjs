@@ -49,6 +49,11 @@ async function loadEntries() {
         throw new Error(`${entry.slug}@${version.version}: .nut is not valid UTF-8`);
       }
       const derived = parseNut(text);
+      if (!checkOnly) {
+        const mirrorDir = path.join(publicDir, "registry-nuts", entry.slug);
+        await mkdir(mirrorDir, { recursive: true });
+        await writeFile(path.join(mirrorDir, `${version.version}.nut`), bytes);
+      }
       versions.push({
         ...version,
         raw_url: rawUrl,
