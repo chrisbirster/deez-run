@@ -33,7 +33,8 @@ test("large Mongo note and snapshot reads avoid per-card database round trips", 
   assert.match(largeDeckPatch, /mongoDeckNoteSummaries/);
   assert.match(largeDeckPatch, /generated_cards/);
   assert.match(largeDeckPatch, /source_notes/);
-  const mongoSnapshot = largeDeckPatch.slice(largeDeckPatch.indexOf("new_snapshot ="), largeDeckPatch.indexOf("hosted_path.write_text"));
+  const snapshotSource = largeDeckPatch.slice(largeDeckPatch.indexOf("new_snapshot ="), largeDeckPatch.indexOf("hosted_path.write_text"));
+  const mongoSnapshot = snapshotSource.slice(snapshotSource.indexOf(".mongodb =>"), snapshotSource.indexOf(".sqlite =>"));
   assert.doesNotMatch(mongoSnapshot, /content_store\.cardSource\(res\.arena, entry\.id\)/);
   assert.doesNotMatch(mongoSnapshot, /self\.store\.getSchedulerState\(entry\.id\)/);
 });
