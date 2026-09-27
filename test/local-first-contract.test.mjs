@@ -78,6 +78,23 @@ test("My nuts separates cloud state from explicit offline hydration", () => {
   assert.match(replication, /hydrateDeckForOffline/);
 });
 
+test("cloud-only decks do not depend on navigator.onLine or an IndexedDB mirror", () => {
+  assert.match(accountClient, /if \(!navigator\.onLine && local && !local\.deleted\) return localApi\.getDeck\(deckId\)/);
+  assert.match(accountClient, /navigator\.onLine \|\| !localDeck \|\| localDeck\.deleted/);
+  assert.match(accountClient, /if \(\(!navigator\.onLine && local\) \|\| local\?\.pending_review\) return localApi\.getCard/);
+  assert.doesNotMatch(replication, /Connect to the internet before syncing a deck for offline use/);
+});
+
+test("offline sync tolerates large and failing decks without blocking the rest", () => {
+  assert.match(remoteApi, /const SNAPSHOT_TIMEOUT_MS = 120_000/);
+  assert.match(remoteApi, /snapshotDeck:[\s\S]*AbortSignal\.timeout\(SNAPSHOT_TIMEOUT_MS\)/);
+  assert.match(syncedDecks, /sort\(\(left, right\) => left\.card_count - right\.card_count/);
+  assert.match(syncedDecks, /const failures: string\[\] = \[\]/);
+  assert.match(syncedDecks, /failures\.push/);
+  assert.match(syncedDecks, /Offline sync finished:/);
+  assert.doesNotMatch(syncedDecks, /disabled=\{syncing\(\) \|\| !navigator\.onLine\}/);
+});
+
 test("Study exposes progress, learning counters, session completion, and undo", () => {
   assert.match(study, /data-deez="study-progress"/);
   assert.match(study, /session left/);

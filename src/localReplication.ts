@@ -429,7 +429,6 @@ async function pullSnapshot() {
 }
 
 export async function hydrateDeckForOffline(deckId: string, onProgress?: (progress: OfflineSyncProgress) => void) {
-  if (!navigator.onLine) throw new Error("Connect to the internet before syncing a deck for offline use.");
   const local = await localDb.deck(deckId);
   const remoteId = local?.remote_id ?? deckId;
   const remoteDeck = await remoteApi.getDeck(remoteId);

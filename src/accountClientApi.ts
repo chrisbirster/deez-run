@@ -123,8 +123,8 @@ export const appApi = {
   ...localApi,
 
   async stats(deckId?: string): Promise<Stats> {
-    if (!navigator.onLine) return localApi.stats(deckId);
     const localDeck = deckId ? await localDb.deck(deckId) : undefined;
+    if (!navigator.onLine && (!deckId || (localDeck && !localDeck.deleted))) return localApi.stats(deckId);
     try {
       return remoteApi.stats(deckId ? await remoteDeckId(deckId) : undefined);
     } catch (reason) {
@@ -146,7 +146,7 @@ export const appApi = {
 
   async getDeck(deckId: string): Promise<Deck> {
     const local = await localDb.deck(deckId);
-    if (!navigator.onLine) return localApi.getDeck(deckId);
+    if (!navigator.onLine && local && !local.deleted) return localApi.getDeck(deckId);
 
     try {
       const remoteId = local?.remote_id ?? deckId;
@@ -163,19 +163,19 @@ export const appApi = {
 
   async renameDeck(deckId: string, name: string): Promise<Deck> {
     const local = await localDb.deck(deckId);
-    if (local || !navigator.onLine) return localApi.renameDeck(deckId, name);
+    if (local && !local.deleted) return localApi.renameDeck(deckId, name);
     return remoteApi.renameDeck(deckId, name);
   },
 
   async deleteDeck(deckId: string) {
     const local = await localDb.deck(deckId);
-    if (local || !navigator.onLine) return localApi.deleteDeck(deckId);
+    if (local && !local.deleted) return localApi.deleteDeck(deckId);
     return remoteApi.deleteDeck(deckId);
   },
 
   async listNotes(deckId: string): Promise<NoteSummary[]> {
     const localDeck = await localDb.deck(deckId);
-    if (navigator.onLine && !(await deckHasPending(deckId))) {
+    if ((navigator.onLine || !localDeck || localDeck.deleted) && !(await deckHasPending(deckId))) {
       try {
         const [remoteId, byRemote] = await Promise.all([remoteDeckId(deckId), localNoteMap(deckId)]);
         const cloud = await remoteApi.listNotes(remoteId);
@@ -193,7 +193,7 @@ export const appApi = {
 
   async listCards(deckId: string): Promise<CardSummary[]> {
     const localDeck = await localDb.deck(deckId);
-    if (navigator.onLine && !(await deckHasPending(deckId))) {
+    if ((navigator.onLine || !localDeck || localDeck.deleted) && !(await deckHasPending(deckId))) {
       try {
         const [remoteId, byRemote] = await Promise.all([remoteDeckId(deckId), localCardMap(deckId)]);
         const cloud = await remoteApi.listCards(remoteId);
@@ -216,7 +216,7 @@ export const appApi = {
 
   async getNote(noteId: string): Promise<Note> {
     const local = await localDb.note(noteId);
-    if (!navigator.onLine || local?.dirty) return localApi.getNote(noteId);
+    if ((!navigator.onLine && local) || local?.dirty) return localApi.getNote(noteId);
     if (local?.remote_id) {
       try {
         return mapRemoteNote(await remoteApi.getNote(local.remote_id), local);
@@ -231,25 +231,25 @@ export const appApi = {
 
   async createNote(deckId: string, input: NoteInput): Promise<Note> {
     const localDeck = await localDb.deck(deckId);
-    if (localDeck || !navigator.onLine) return localApi.createNote(deckId, input);
+    if (localDeck && !localDeck.deleted) return localApi.createNote(deckId, input);
     return remoteApi.createNote(await remoteDeckId(deckId), input);
   },
 
   async updateNote(noteId: string, input: NoteInput): Promise<Note> {
     const local = await localDb.note(noteId);
-    if (local || !navigator.onLine) return localApi.updateNote(noteId, input);
+    if (local && !local.deleted) return localApi.updateNote(noteId, input);
     return remoteApi.updateNote(noteId, input);
   },
 
   async deleteNote(noteId: string) {
     const local = await localDb.note(noteId);
-    if (local || !navigator.onLine) return localApi.deleteNote(noteId);
+    if (local && !local.deleted) return localApi.deleteNote(noteId);
     return remoteApi.deleteNote(noteId);
   },
 
   async nextStudyCard(deckId: string, options: StudyNextOptions = {}): Promise<StudyNext> {
     const localDeck = await localDb.deck(deckId);
-    if (navigator.onLine && !(await deckHasPending(deckId))) {
+    if ((navigator.onLine || !localDeck || localDeck.deleted) && !(await deckHasPending(deckId))) {
       try {
         const remoteId = await remoteDeckId(deckId);
         const next = await remoteApi.nextStudyCard(remoteId, options);
@@ -273,7 +273,7 @@ export const appApi = {
 
   async getCard(cardId: string): Promise<CardDetail> {
     const local = await localDb.card(cardId);
-    if (!navigator.onLine || local?.pending_review) return localApi.getCard(cardId);
+    if ((!navigator.onLine && local) || local?.pending_review) return localApi.getCard(cardId);
     try {
       const detail = await remoteApi.getCard(local?.remote_id ?? cardId);
       return mapRemoteCardDetail(detail, local);
@@ -286,7 +286,7 @@ export const appApi = {
 
   async previewStudy(cardId: string): Promise<StudyPreview> {
     const local = await localDb.card(cardId);
-    if (!navigator.onLine || local?.pending_review) return localApi.previewStudy(cardId);
+    if ((!navigator.onLine && local) || local?.pending_review) return localApi.previewStudy(cardId);
     try {
       const preview = await remoteApi.previewStudy(local?.remote_id ?? cardId);
       return mapRemotePreview(preview, local);
@@ -299,7 +299,7 @@ export const appApi = {
 
   async review(cardId: string, rating: 1 | 2 | 3 | 4, expectedReviewCount: number, reviewedAtMs = Date.now()) {
     const local = await localDb.card(cardId);
-    if (!navigator.onLine) return localApi.review(cardId, rating, expectedReviewCount, reviewedAtMs);
+    if (!navigator.onLine && local) return localApi.review(cardId, rating, expectedReviewCount, reviewedAtMs);
 
     if (local && (local.pending_review || await deckHasPending(local.deck_id))) {
       return localApi.review(cardId, rating, expectedReviewCount, reviewedAtMs);

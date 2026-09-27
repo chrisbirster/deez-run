@@ -88,6 +88,7 @@ export class ApiError extends Error {
 type ErrorBody = { error?: { code?: string; message?: string } };
 
 const REQUEST_TIMEOUT_MS = 20_000;
+const SNAPSHOT_TIMEOUT_MS = 120_000;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const signal = init?.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS);
@@ -140,7 +141,7 @@ export const appApi = {
   listDecks: () => request<Deck[]>("/decks"),
   createDeck: (name: string) => request<Deck>("/decks", { method: "POST", body: JSON.stringify({ name }) }),
   getDeck: (id: string) => request<Deck>(`/decks/${encodeURIComponent(id)}`),
-  snapshotDeck: (id: string) => request<DeckSnapshot>(`/decks/${encodeURIComponent(id)}/snapshot`),
+  snapshotDeck: (id: string) => request<DeckSnapshot>(`/decks/${encodeURIComponent(id)}/snapshot`, { signal: AbortSignal.timeout(SNAPSHOT_TIMEOUT_MS) }),
   renameDeck: (id: string, name: string) => request<Deck>(`/decks/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ name }) }),
   deleteDeck: (id: string) => request<void>(`/decks/${encodeURIComponent(id)}`, { method: "DELETE" }),
   resetDeckScheduling: (id: string) => request<Deck>(`/decks/${encodeURIComponent(id)}/scheduling/reset`, { method: "POST" }),
