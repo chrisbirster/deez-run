@@ -96,6 +96,17 @@ test("review mutations tell other visible account views to refresh", () => {
   assert.match(dashboard, /last_reviewed_at_ms/);
 });
 
+test("large cloud-only decks open before their note collection is materialized", () => {
+  assert.match(deckPage, /LARGE_DECK_NOTE_THRESHOLD = 200/);
+  assert.match(deckPage, /const d = await appApi\.getDeck\(id\(\)\)/);
+  assert.doesNotMatch(deckPage, /Promise\.all\(\[appApi\.getDeck\(id\(\)\), appApi\.listNotes\(id\(\)\)\]\)/);
+  assert.match(deckPage, /Large decks open without downloading every note summary first/);
+  assert.match(deckPage, />Load notes</);
+  assert.match(accountClient, /if \(!local \|\| local\.deleted\) throw reason/);
+  assert.match(accountClient, /return remoteApi\.renameDeck\(deckId, name\)/);
+  assert.match(accountClient, /return remoteApi\.deleteDeck\(deckId\)/);
+});
+
 test("deck management supports rename export duplicate reset and confirmed delete", () => {
   assert.match(router, /\.\/deckPage/);
   assert.match(deckPage, /Rename/);
