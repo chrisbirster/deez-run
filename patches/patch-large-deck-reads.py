@@ -197,9 +197,13 @@ new_snapshot = r'''fn deckSnapshot(self: *Handler, req: *httpz.Request, res: *ht
                 const top_due = try summaryI64(document, "due_at_ms");
                 if (top_due <= now_ms) due_count += 1;
 
+                var due_at_ms: ?i64 = null;
                 var last_reviewed: ?i64 = null;
                 if (try bongo.bson.Reader.get(document, "scheduler_state")) |value| {
-                    if (value == .document) last_reviewed = try largeReadOptionalI64(value.document, "last_reviewed_at_ms");
+                    if (value == .document) {
+                        due_at_ms = try largeReadOptionalI64(value.document, "due_at_ms");
+                        last_reviewed = try largeReadOptionalI64(value.document, "last_reviewed_at_ms");
+                    }
                 }
                 const index = cards.items.len;
                 try cards.append(res.arena, .{
@@ -207,9 +211,7 @@ new_snapshot = r'''fn deckSnapshot(self: *Handler, req: *httpz.Request, res: *ht
                     .deck_id = try idText(res.arena, deck_id),
                     .front = try res.arena.dupe(u8, try largeReadString(document, "question")),
                     .note_id = null,
-                    .due_at_ms = if ((try bongo.bson.Reader.get(document, "scheduler_state")) |value|
-                        if (value == .document) try largeReadOptionalI64(value.document, "due_at_ms") else null
-                    else null,
+                    .due_at_ms = due_at_ms,
                     .last_reviewed_at_ms = last_reviewed,
                 });
                 try card_index.put(card_id, index);
