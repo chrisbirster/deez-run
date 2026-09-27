@@ -124,10 +124,12 @@ export const appApi = {
 
   async stats(deckId?: string): Promise<Stats> {
     if (!navigator.onLine) return localApi.stats(deckId);
+    const localDeck = deckId ? await localDb.deck(deckId) : undefined;
     try {
       return remoteApi.stats(deckId ? await remoteDeckId(deckId) : undefined);
     } catch (reason) {
       if (!shouldFallback(reason)) throw reason;
+      if (deckId && (!localDeck || localDeck.deleted)) throw reason;
       return localApi.stats(deckId);
     }
   },
@@ -143,19 +145,36 @@ export const appApi = {
   },
 
   async getDeck(deckId: string): Promise<Deck> {
-    if (navigator.onLine) {
-      try {
-        const remoteId = await remoteDeckId(deckId);
-        const cloud = await remoteApi.getDeck(remoteId);
-        return { ...cloud, id: deckId };
-      } catch (reason) {
-        if (!shouldFallback(reason)) throw reason;
-      }
+    const local = await localDb.deck(deckId);
+    if (!navigator.onLine) return localApi.getDeck(deckId);
+
+    try {
+      const remoteId = local?.remote_id ?? deckId;
+      const cloud = await remoteApi.getDeck(remoteId);
+      return { ...cloud, id: deckId };
+    } catch (reason) {
+      if (!shouldFallback(reason)) throw reason;
+      // A cloud-only deck has no local record to fall back to. Preserve the
+      // real cloud/network error instead of replacing it with "Deck not found".
+      if (!local || local.deleted) throw reason;
+      return localApi.getDeck(deckId);
     }
-    return localApi.getDeck(deckId);
+  },
+
+  async renameDeck(deckId: string, name: string): Promise<Deck> {
+    const local = await localDb.deck(deckId);
+    if (local || !navigator.onLine) return localApi.renameDeck(deckId, name);
+    return remoteApi.renameDeck(deckId, name);
+  },
+
+  async deleteDeck(deckId: string) {
+    const local = await localDb.deck(deckId);
+    if (local || !navigator.onLine) return localApi.deleteDeck(deckId);
+    return remoteApi.deleteDeck(deckId);
   },
 
   async listNotes(deckId: string): Promise<NoteSummary[]> {
+    const localDeck = await localDb.deck(deckId);
     if (navigator.onLine && !(await deckHasPending(deckId))) {
       try {
         const [remoteId, byRemote] = await Promise.all([remoteDeckId(deckId), localNoteMap(deckId)]);
@@ -166,12 +185,14 @@ export const appApi = {
         });
       } catch (reason) {
         if (!shouldFallback(reason)) throw reason;
+        if (!localDeck || localDeck.deleted) throw reason;
       }
     }
     return localApi.listNotes(deckId);
   },
 
   async listCards(deckId: string): Promise<CardSummary[]> {
+    const localDeck = await localDb.deck(deckId);
     if (navigator.onLine && !(await deckHasPending(deckId))) {
       try {
         const [remoteId, byRemote] = await Promise.all([remoteDeckId(deckId), localCardMap(deckId)]);
@@ -187,6 +208,7 @@ export const appApi = {
         });
       } catch (reason) {
         if (!shouldFallback(reason)) throw reason;
+        if (!localDeck || localDeck.deleted) throw reason;
       }
     }
     return localApi.listCards(deckId);
@@ -226,6 +248,7 @@ export const appApi = {
   },
 
   async nextStudyCard(deckId: string, options: StudyNextOptions = {}): Promise<StudyNext> {
+    const localDeck = await localDb.deck(deckId);
     if (navigator.onLine && !(await deckHasPending(deckId))) {
       try {
         const remoteId = await remoteDeckId(deckId);
@@ -242,6 +265,7 @@ export const appApi = {
         };
       } catch (reason) {
         if (!shouldFallback(reason)) throw reason;
+        if (!localDeck || localDeck.deleted) throw reason;
       }
     }
     return localApi.nextStudyCard(deckId, options);

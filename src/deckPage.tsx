@@ -10,6 +10,7 @@ import { Seo } from "./seo";
 import { styles } from "./siteStyles";
 
 function message(reason: unknown) { return reason instanceof Error ? reason.message : "Something went wrong."; }
+const LARGE_DECK_NOTE_THRESHOLD = 200;
 function download(filename: string, contents: string) {
   const url = URL.createObjectURL(new Blob([contents], { type: "application/x-ndjson;charset=utf-8" }));
   const anchor = document.createElement("a"); anchor.href = url; anchor.download = filename; document.body.append(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url);
@@ -21,15 +22,37 @@ export function DeckPage() {
   const id = () => String(params.deckId ?? "");
   const [deck, setDeck] = createSignal<Deck>();
   const [notes, setNotes] = createSignal<NoteSummary[]>([]);
+  const [notesLoaded, setNotesLoaded] = createSignal(false);
+  const [notesLoading, setNotesLoading] = createSignal(false);
+  const [notesError, setNotesError] = createSignal<string>();
   const [rename, setRename] = createSignal("");
   const [busy, setBusy] = createSignal<string>();
   const [error, setError] = createSignal<string>();
   const [notice, setNotice] = createSignal<string>();
 
-  async function load() {
+  async function loadNotes() {
+    if (notesLoading()) return;
+    setNotesLoading(true); setNotesError(undefined);
     try {
-      const [d, n] = await Promise.all([appApi.getDeck(id()), appApi.listNotes(id())]);
-      setDeck(d); setRename(d.name); setNotes(n);
+      setNotes(await appApi.listNotes(id()));
+      setNotesLoaded(true);
+    } catch (reason) {
+      setNotesError(message(reason));
+    } finally {
+      setNotesLoading(false);
+    }
+  }
+
+  async function load() {
+    setError(undefined); setNotesError(undefined);
+    try {
+      // Fetch the small deck header first. Large note collections are loaded
+      // afterward (or on demand) so they cannot block the deck itself behind
+      // the hosted storage mutex and make a healthy cloud deck look missing.
+      const d = await appApi.getDeck(id());
+      setDeck(d); setRename(d.name);
+      if (d.note_count <= LARGE_DECK_NOTE_THRESHOLD) await loadNotes();
+      else { setNotes([]); setNotesLoaded(false); }
     } catch (reason) { setError(message(reason)); }
   }
   void load();
@@ -109,9 +132,24 @@ export function DeckPage() {
 
       <section style={{ "margin-top": "18px" }}>
         <div {...stylex.attrs(s.row)}><h2>Notes</h2><a href={`/app/decks/${id()}/cards`}>Inspect generated cards →</a></div>
-        <div {...stylex.attrs(s.list)}><For each={notes()} fallback={<div {...stylex.attrs(s.panel)}>No notes yet.</div>}>
-          {(note) => <a {...stylex.attrs(s.listItem)} href={`/app/decks/${id()}/notes/${note.id}`}><div {...stylex.attrs(s.row)}><strong>{note.preview || "Untitled note"}</strong><span {...stylex.attrs(s.muted)}>{note.note_type}</span></div><span {...stylex.attrs(s.muted)}>{note.card_count} card{note.card_count === 1 ? "" : "s"}</span></a>}
-        </For></div>
+        <Show when={notesError()}>{(value) => <div {...stylex.attrs(s.error)}>{value()} <button {...stylex.attrs(styles.button, styles.buttonSecondary)} type="button" disabled={notesLoading()} onClick={() => void loadNotes()}>Retry notes</button></div>}</Show>
+        <Show
+          when={notesLoaded()}
+          fallback={<div {...stylex.attrs(s.panel)}>
+            <p {...stylex.attrs(s.muted)}>
+              {notesLoading()
+                ? "Loading notes…"
+                : `${current().note_count} notes. Large decks open without downloading every note summary first.`}
+            </p>
+            <Show when={!notesLoading()}>
+              <button {...stylex.attrs(styles.button, styles.buttonSecondary)} type="button" onClick={() => void loadNotes()}>Load notes</button>
+            </Show>
+          </div>}
+        >
+          <div {...stylex.attrs(s.list)}><For each={notes()} fallback={<div {...stylex.attrs(s.panel)}>No notes yet.</div>}>
+            {(note) => <a {...stylex.attrs(s.listItem)} href={`/app/decks/${id()}/notes/${note.id}`}><div {...stylex.attrs(s.row)}><strong>{note.preview || "Untitled note"}</strong><span {...stylex.attrs(s.muted)}>{note.note_type}</span></div><span {...stylex.attrs(s.muted)}>{note.card_count} card{note.card_count === 1 ? "" : "s"}</span></a>}
+          </For></div>
+        </Show>
       </section>
     </>}</Show>
   </AppShell>;
