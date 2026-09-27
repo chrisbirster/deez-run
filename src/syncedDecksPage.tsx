@@ -59,18 +59,28 @@ export function SyncedDecksPage() {
   void refresh();
 
   async function syncOffline() {
-    if (!navigator.onLine || syncing()) return;
+    if (syncing()) return;
     setSyncing(true); setError(undefined);
     try {
-      const library = await appApi.listDecks();
+      const library = [...await appApi.listDecks()].sort((left, right) => left.card_count - right.card_count || left.name.localeCompare(right.name));
+      const failures: string[] = [];
+      let completed = 0;
       for (let deckIndex = 0; deckIndex < library.length; deckIndex += 1) {
         const deck = library[deckIndex];
         setSyncText(`${deckIndex + 1}/${library.length} ${deck.name}: preparing snapshot…`);
-        await appApi.syncDeckForOffline(deck.id, (progress) => {
-          setSyncText(`${deckIndex + 1}/${library.length} ${deck.name}: ${progress.hydrated_cards}/${progress.total_cards} cards ready offline`);
-        });
+        try {
+          await appApi.syncDeckForOffline(deck.id, (progress) => {
+            setSyncText(`${deckIndex + 1}/${library.length} ${deck.name}: ${progress.hydrated_cards}/${progress.total_cards} cards ready offline`);
+          });
+          completed += 1;
+        } catch (reason) {
+          failures.push(`${deck.name}: ${message(reason)}`);
+        }
       }
-      setSyncText("Offline library is current.");
+      setSyncText(failures.length
+        ? `Offline sync finished: ${completed}/${library.length} decks ready. Failed decks can be retried.`
+        : "Offline library is current.");
+      setError(failures.length ? failures.join(" · ") : undefined);
       await refresh();
     } catch (reason) { setError(message(reason)); }
     finally { setSyncing(false); }
@@ -99,7 +109,7 @@ export function SyncedDecksPage() {
     <Seo title="My nuts" description="Your Deez account library and optional offline copies." path="/app/decks" noindex />
     <div {...stylex.attrs(s.topRow)}>
       <div><p {...stylex.attrs(styles.eyebrow)}>Library</p><h1 {...stylex.attrs(s.appHeading)}>My nuts</h1><p {...stylex.attrs(s.muted)}>Account cloud is shared across devices. Offline copies are optional per-device caches.</p></div>
-      <button {...stylex.attrs(styles.button, styles.buttonSecondary)} disabled={syncing() || !navigator.onLine} onClick={() => void syncOffline()}>{syncing() ? "Syncing offline…" : "Sync for offline"}</button>
+      <button {...stylex.attrs(styles.button, styles.buttonSecondary)} disabled={syncing()} onClick={() => void syncOffline()}>{syncing() ? "Syncing offline…" : "Sync for offline"}</button>
     </div>
     <Show when={syncText()}><div {...stylex.attrs(s.success)}>{syncText()}</div></Show>
     <Show when={snapshot()?.cloud_error}>{(value) => <div {...stylex.attrs(s.error)}>Cloud status: {value()}</div>}</Show>
