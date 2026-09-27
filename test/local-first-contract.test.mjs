@@ -105,6 +105,8 @@ test("large cloud-only decks open before their note collection is materialized",
   assert.match(accountClient, /if \(!local \|\| local\.deleted\) throw reason/);
   assert.match(accountClient, /return remoteApi\.renameDeck\(deckId, name\)/);
   assert.match(accountClient, /return remoteApi\.deleteDeck\(deckId\)/);
+  assert.match(accountClient, /async listCards[\\s\\S]*if \(!localDeck \|\| localDeck\.deleted\) throw reason/);
+  assert.match(accountClient, /async nextStudyCard[\\s\\S]*if \(!localDeck \|\| localDeck\.deleted\) throw reason/);
 });
 
 test("deck management supports rename export duplicate reset and confirmed delete", () => {
