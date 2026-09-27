@@ -36,12 +36,12 @@ fn info(_: *Handler, _: *httpz.Request, res: *httpz.Response) !void {{
 '''
 text = text.replace(version, info, 1)
 
-bypass = '        std.mem.eql(u8, req.url.path, "/api/v1/version") or\n        std.mem.eql(u8, req.url.path, "/api/v1/capabilities")'
-if bypass not in text:
-    raise SystemExit("public bypass block not found")
+bypass = 'std.mem.eql(u8, req.url.path, "/api/v1/capabilities")'
+if text.count(bypass) != 1:
+    raise SystemExit(f"public bypass capability marker count={text.count(bypass)}")
 text = text.replace(
     bypass,
-    '        std.mem.eql(u8, req.url.path, "/api/v1/version") or\n        std.mem.eql(u8, req.url.path, "/api/v1/info") or\n        std.mem.eql(u8, req.url.path, "/api/v1/capabilities")',
+    'std.mem.eql(u8, req.url.path, "/api/v1/info") or\n                std.mem.eql(u8, req.url.path, "/api/v1/capabilities")',
     1,
 )
 
