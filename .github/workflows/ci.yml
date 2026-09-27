@@ -25,7 +25,7 @@ jobs:
           npm ci
           npm run check
       - name: Build production image against Dockerfile-pinned Deez core
-        run: docker build --build-arg TARGETARCH=amd64 -t deez-run:ci .
+        run: docker build --build-arg TARGETARCH=amd64 --build-arg DEEZ_RUN_REVISION="${GITHUB_SHA}" -t deez-run:ci .
       - name: Verify production runtime contains only Deez server requirements
         run: |
           docker run --rm --entrypoint /bin/sh deez-run:ci -c 'test -x /app/deez && test -f /app/web/index.html && test -f /app/web/deez-scheduler.wasm && ! command -v node && ! command -v npm && ! command -v zig && ! command -v python3'
@@ -95,6 +95,10 @@ jobs:
           done
 
           grep -q '"status":"ok"' /tmp/health.json
+          curl --fail --silent http://127.0.0.1:18080/api/v1/info > /tmp/info.json
+          grep -q '"service":"deez.run"' /tmp/info.json
+          grep -q '"deez_run_revision":"'${GITHUB_SHA}'"' /tmp/info.json
+          grep -q '"deez_core_revision":"22412a5be3d9263b6c46b3c68cb105f708c520ab"' /tmp/info.json
           grep -qi '^content-security-policy: .*frame-ancestors '\''none'\''' /tmp/health.headers
           if grep -qi 'wasm-unsafe-eval' /tmp/health.headers; then
             echo 'health/API response unexpectedly enables WebAssembly compilation' >&2
