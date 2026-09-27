@@ -29,9 +29,9 @@ jobs:
       - run: npm ci
       - run: npm run verify
       - name: Build production image
-        run: docker build --build-arg TARGETARCH=amd64 -t deez-run:deploy-check .
+        run: docker build --build-arg TARGETARCH=amd64 --build-arg DEEZ_RUN_REVISION="${GITHUB_SHA}" -t deez-run:deploy-check .
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Deploy
-        run: flyctl deploy --remote-only
+        run: flyctl deploy --remote-only --build-arg DEEZ_RUN_REVISION="${GITHUB_SHA}"
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

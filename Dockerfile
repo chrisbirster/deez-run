@@ -11,6 +11,7 @@ RUN npm run build
 FROM debian:bookworm-slim AS deez-build
 ARG TARGETARCH
 ARG DEEZ_COMMIT=22412a5be3d9263b6c46b3c68cb105f708c520ab
+ARG DEEZ_RUN_REVISION=unknown
 ARG ZIG_VERSION=0.16.0
 
 RUN apt-get update \
@@ -40,6 +41,8 @@ COPY patches/patch-hosted-web.py /tmp/patch-hosted-web.py
 COPY patches/patch-hosted-auth.py /tmp/patch-hosted-auth.py
 COPY patches/patch-study-queue.py /tmp/patch-study-queue.py
 COPY patches/patch-production-reliability.py /tmp/patch-production-reliability.py
+COPY patches/patch-large-deck-reads.py /tmp/patch-large-deck-reads.py
+COPY patches/patch-runtime-info.py /tmp/patch-runtime-info.py
 COPY patches/patch-deck-delete.py /tmp/patch-deck-delete.py
 COPY patches/patch-study-completeness.py /tmp/patch-study-completeness.py
 WORKDIR /src/deez
@@ -50,6 +53,8 @@ RUN git clone https://github.com/chrisbirster/deez.git . \
     && python3 /tmp/patch-hosted-auth.py src/hosted_auth.zig \
     && python3 /tmp/patch-study-queue.py src/storage/store.zig \
     && python3 /tmp/patch-production-reliability.py /src/deez \
+    && python3 /tmp/patch-large-deck-reads.py /src/deez \
+    && DEEZ_RUN_REVISION="${DEEZ_RUN_REVISION}" DEEZ_CORE_REVISION="${DEEZ_COMMIT}" python3 /tmp/patch-runtime-info.py src/hosted_web.zig \
     && python3 /tmp/patch-deck-delete.py src/hosted_web.zig \
     && python3 /tmp/patch-study-completeness.py /src/deez
 RUN zig fmt src/hosted_web.zig src/hosted_auth.zig src/storage/store.zig src/storage/sqlite.zig src/storage/mongodb.zig src/study.zig src/web_study.zig \

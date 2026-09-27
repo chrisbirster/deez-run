@@ -2,6 +2,7 @@ import { For, Show, createSignal, onCleanup } from "solid-js";
 import * as stylex from "@stylexjs/stylex";
 import { appApi, type Deck } from "./appApi";
 import { AppShell } from "./appChrome";
+import { localDb } from "./localDb";
 import { appStyles as s } from "./appStyles.stylex";
 import { Seo } from "./seo";
 import { UiIcon, type UiIconName } from "./uiIcons";
@@ -23,11 +24,14 @@ export function DashboardPage() {
       try {
         const library = await appApi.listDecks();
         setDecks(library);
-        if (navigator.onLine) {
-          const snapshots = await Promise.all(library.map((deck) => appApi.snapshotDeck(deck.id)));
-          const day = startOfLocalDay();
-          setStudiedToday(snapshots.reduce((total, snapshot) => total + snapshot.cards.filter((card) => (card.last_reviewed_at_ms ?? 0) >= day).length, 0));
-        }
+        // Never hydrate full deck snapshots just to render the dashboard. A
+        // snapshot can contain thousands of notes/cards and historically held
+        // the hosted storage lock long enough to stall unrelated requests.
+        // Use the optional IndexedDB mirror for this cosmetic counter instead;
+        // cloud-authoritative counts continue to come from listDecks().
+        const day = startOfLocalDay();
+        const localCards = await localDb.cards();
+        setStudiedToday(localCards.filter((card) => (card.summary.last_reviewed_at_ms ?? 0) >= day).length);
         setError(undefined);
       } catch (reason) { setError(message(reason)); }
     })().finally(() => { loading = undefined; });

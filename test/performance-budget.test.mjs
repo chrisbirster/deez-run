@@ -8,6 +8,8 @@ const portable = fs.readFileSync(new URL("../src/portable.ts", import.meta.url),
 const hostedPatch = fs.readFileSync(new URL("../patches/patch-hosted-web.py", import.meta.url), "utf8");
 const reliabilityPatch = fs.readFileSync(new URL("../patches/patch-production-reliability.py", import.meta.url), "utf8");
 const studyQueuePatch = fs.readFileSync(new URL("../patches/patch-study-queue.py", import.meta.url), "utf8");
+const largeDeckPatch = fs.readFileSync(new URL("../patches/patch-large-deck-reads.py", import.meta.url), "utf8");
+const dashboard = fs.readFileSync(new URL("../src/dashboardPage.tsx", import.meta.url), "utf8");
 
 export const budgets = Object.freeze({
   deckListMs: 2_000,
@@ -25,6 +27,21 @@ test("large-deck reads use bounded query shapes", () => {
   assert.equal((apply.match(/snapshotDeck\(/g) ?? []).length, budgets.snapshotRequestsPerDeck);
   assert.doesNotMatch(apply, /getCard\(/);
   assert.doesNotMatch(apply, /previewStudy\(/);
+});
+
+test("large Mongo note and snapshot reads avoid per-card database round trips", () => {
+  assert.match(largeDeckPatch, /mongoDeckNoteSummaries/);
+  assert.match(largeDeckPatch, /generated_cards/);
+  assert.match(largeDeckPatch, /source_notes/);
+  const snapshotSource = largeDeckPatch.slice(largeDeckPatch.indexOf("new_snapshot ="), largeDeckPatch.indexOf("hosted_path.write_text"));
+  const mongoSnapshot = snapshotSource.slice(snapshotSource.indexOf(".mongodb =>"), snapshotSource.indexOf(".sqlite =>"));
+  assert.doesNotMatch(mongoSnapshot, /content_store\.cardSource\(res\.arena, entry\.id\)/);
+  assert.doesNotMatch(mongoSnapshot, /self\.store\.getSchedulerState\(entry\.id\)/);
+});
+
+test("dashboard never downloads every deck snapshot to render a cosmetic counter", () => {
+  assert.doesNotMatch(dashboard, /library\.map\(\(deck\) => appApi\.snapshotDeck/);
+  assert.match(dashboard, /localDb\.cards\(\)/);
 });
 
 test("large imports use a single IndexedDB batch and server chunks", () => {
