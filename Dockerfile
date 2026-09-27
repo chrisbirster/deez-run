@@ -40,6 +40,7 @@ COPY patches/patch-hosted-web.py /tmp/patch-hosted-web.py
 COPY patches/patch-hosted-auth.py /tmp/patch-hosted-auth.py
 COPY patches/patch-study-queue.py /tmp/patch-study-queue.py
 COPY patches/patch-production-reliability.py /tmp/patch-production-reliability.py
+COPY patches/patch-large-deck-reads.py /tmp/patch-large-deck-reads.py
 COPY patches/patch-deck-delete.py /tmp/patch-deck-delete.py
 COPY patches/patch-study-completeness.py /tmp/patch-study-completeness.py
 WORKDIR /src/deez
@@ -50,6 +51,7 @@ RUN git clone https://github.com/chrisbirster/deez.git . \
     && python3 /tmp/patch-hosted-auth.py src/hosted_auth.zig \
     && python3 /tmp/patch-study-queue.py src/storage/store.zig \
     && python3 /tmp/patch-production-reliability.py /src/deez \
+    && python3 /tmp/patch-large-deck-reads.py /src/deez \
     && python3 /tmp/patch-deck-delete.py src/hosted_web.zig \
     && python3 /tmp/patch-study-completeness.py /src/deez
 RUN zig fmt src/hosted_web.zig src/hosted_auth.zig src/storage/store.zig src/storage/sqlite.zig src/storage/mongodb.zig src/study.zig src/web_study.zig \
