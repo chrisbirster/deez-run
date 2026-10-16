@@ -1,4 +1,4 @@
-import { For, Show } from "solid-js";
+import { For, Show, createSignal } from "solid-js";
 import { useParams, useSearchParams } from "@solidjs/router";
 import * as stylex from "@stylexjs/stylex";
 import {
@@ -10,6 +10,7 @@ import {
   type CatalogEntry,
 } from "./lib/catalog";
 import { Seo } from "./seo";
+import { installCatalogNut } from "./publicNutInstall";
 import { styles } from "./siteStyles";
 
 function NutCard(props: { nut: CatalogEntry }) {
@@ -155,6 +156,27 @@ export function SearchPage() {
 export function NutPage() {
   const params = useParams();
   const nut = () => findNut(String(params.slug ?? ""));
+  const [installing, setInstalling] = createSignal(false);
+  const [installError, setInstallError] = createSignal<string>();
+
+  async function addToMyDeez() {
+    const entry = nut();
+    if (!entry || installing()) return;
+    setInstalling(true);
+    setInstallError(undefined);
+    try {
+      const deck = await installCatalogNut(entry);
+      window.location.assign(`/app/decks/${encodeURIComponent(deck.id)}`);
+    } catch (reason) {
+      if (typeof reason === "object" && reason !== null && "status" in reason && (reason as { status?: number }).status === 401) {
+        window.location.assign(`/login?next=${encodeURIComponent(`/nuts/${entry.slug}`)}`);
+        return;
+      }
+      setInstallError(reason instanceof Error ? reason.message : "Unable to add this nut to My Deez.");
+    } finally {
+      setInstalling(false);
+    }
+  }
 
   return (
     <Show when={nut()} fallback={<NotFoundPage />}>
@@ -194,9 +216,13 @@ export function NutPage() {
                 <p {...stylex.attrs(styles.monoWrap)}><strong>Path</strong><br />{latest.path}</p>
                 <p {...stylex.attrs(styles.monoWrap)}><strong>SHA-256</strong><br />{latest.sha256}</p>
                 <div {...stylex.attrs(styles.buttonRow)}>
-                  <a {...stylex.attrs(styles.button)} href={latest.raw_url}>Download .nut</a>
+                  <button {...stylex.attrs(styles.button)} type="button" disabled={installing()} onClick={() => void addToMyDeez()}>
+                    {installing() ? "Adding…" : "Add to My Deez"}
+                  </button>
+                  <a {...stylex.attrs(styles.button, styles.buttonSecondary)} href={latest.raw_url}>Download .nut</a>
                   <a {...stylex.attrs(styles.button, styles.buttonSecondary)} href={latest.source_url}>View source</a>
                 </div>
+                <Show when={installError()}>{(value) => <p role="alert">{value()}</p>}</Show>
               </section>
             </div>
 

@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "slug": "mongodb",
+  "name": "MongoDB",
+  "description": "A 450-note MongoDB study deck covering document fundamentals, BSON, data modeling, CRUD, indexing, aggregation, replication, sharding, transactions, and operational concepts.",
+  "authors": [
+    {
+      "github": "chrisbirster",
+      "name": "Chris Birster"
+    }
+  ],
+  "tags": [
+    "mongodb",
+    "database",
+    "study"
+  ],
+  "license": null,
+  "source": {
+    "type": "github",
+    "repository": "chrisbirster/deez-nuts"
+  },
+  "versions": [
+    {
+      "version": "1.0.0",
+      "commit": "e439c821d817e9adcdf609e63b4345de68340364",
+      "path": "nuts/mongodb/mongodb.nut",
+      "sha256": "2757c877f40a346d0ed2fc83448db5cf1f6458dc2fa500079bfe706581a7cdec"
+    }
+  ]
+}
